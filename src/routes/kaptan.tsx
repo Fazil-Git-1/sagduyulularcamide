@@ -152,6 +152,8 @@ function ScoreForm({ teams }: { teams: Team[] }) {
   const [saving, setSaving] = useState(false);
 
   const selectedTeam = teamId || activeTeams[0]?.id || "";
+  const { data: entries = [] } = useQuery(teamScoresQuery(selectedTeam));
+  const entered = new Map(entries.map((e) => [e.date, e.score]));
 
   useEffect(() => {
     if (!selectedTeam) return;
@@ -187,7 +189,9 @@ function ScoreForm({ teams }: { teams: Team[] }) {
     }
     toast.success("Puan kaydedildi.");
     queryClient.invalidateQueries({ queryKey: ["teams"] });
+    queryClient.invalidateQueries({ queryKey: ["scores", selectedTeam] });
   }
+
 
   return (
     <form
