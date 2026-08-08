@@ -10,16 +10,16 @@ import { KeyRound, Trophy } from "lucide-react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "30 Günlük Namaz Yarışması — Liderlik Tablosu" },
+      { title: "Namaz Yarışması — Liderlik Tablosu" },
       {
         name: "description",
         content:
           "30 günlük namaz yarışmasının canlı liderlik tablosu: takım puanları ve gün ilerlemesi anlık olarak burada.",
       },
-      { property: "og:title", content: "30 Günlük Namaz Yarışması — Liderlik Tablosu" },
+      { property: "og:title", content: "Namaz Yarışması — Liderlik Tablosu" },
       {
         property: "og:description",
-        content: "Takımların günlük puanları ve canlı sıralama.",
+        content: "30 günlük namaz yarışmasının canlı liderlik tablosu: takım puanları ve gün ilerlemesi anlık olarak burada.",
       },
     ],
   }),

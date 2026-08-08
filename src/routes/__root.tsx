@@ -79,18 +79,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "30 Günlük Namaz Yarışması" },
+      { title: "Namaz Yarışması — Liderlik Tablosu" },
       {
         name: "description",
-        content: "Takımlar arası 30 günlük namaz yarışması liderlik tablosu.",
+        content: "30 günlük namaz yarışmasının canlı liderlik tablosu: takım puanları ve gün ilerlemesi anlık olarak burada.",
       },
-      { property: "og:title", content: "30 Günlük Namaz Yarışması" },
+      { property: "og:title", content: "Namaz Yarışması — Liderlik Tablosu" },
       {
         property: "og:description",
-        content: "Takımlar arası 30 günlük namaz yarışması liderlik tablosu.",
+        content: "30 günlük namaz yarışmasının canlı liderlik tablosu: takım puanları ve gün ilerlemesi anlık olarak burada.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Namaz Yarışması — Liderlik Tablosu" },
+      { name: "twitter:description", content: "30 günlük namaz yarışmasının canlı liderlik tablosu: takım puanları ve gün ilerlemesi anlık olarak burada." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bd1870daaffdc71ea97d59fee9eb0f0d/id-preview-c98ac831--d2f6a3da-7e9e-4bb7-b10c-103b398cb059.lovable.app-1786222839322.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bd1870daaffdc71ea97d59fee9eb0f0d/id-preview-c98ac831--d2f6a3da-7e9e-4bb7-b10c-103b398cb059.lovable.app-1786222839322.png" },
     ],
     links: [
       {
@@ -103,7 +107,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),
 
