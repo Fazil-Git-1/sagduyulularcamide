@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { teamsQuery } from "@/lib/queries";
+import { teamsQuery, teamScoresQuery } from "@/lib/queries";
 import { CAPTAIN_PIN, formatTR, selectableDates, todayISO } from "@/lib/contest";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
