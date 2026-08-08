@@ -47,9 +47,15 @@ function CaptainPage() {
             <ArrowLeft className="h-5 w-5" aria-hidden />
             <span className="sr-only">Ana ekrana dön</span>
           </Link>
-          <h1 className="text-lg font-semibold">Kaptan Paneli</h1>
+          <div>
+            <span className="block text-lg font-extrabold tracking-tight">
+              Sağduyulular Camide
+            </span>
+            <h1 className="text-xs opacity-80">Kaptan Paneli</h1>
+          </div>
         </div>
       </header>
+
       <div className="mx-auto max-w-2xl px-4 py-6">
         {unlocked ? <CaptainDashboard /> : <PinGate onSuccess={() => setUnlocked(true)} />}
       </div>
