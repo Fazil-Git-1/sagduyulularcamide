@@ -208,12 +208,44 @@ function ScoreForm({ teams }: { teams: Team[] }) {
         >
           {dates.map((d) => (
             <option key={d} value={d}>
+              {entered.has(d) ? "● " : "○ "}
               {formatTR(d)}
               {d === todayISO() ? " (Bugün)" : ""}
+              {entered.has(d) ? ` — ${entered.get(d)} puan` : ""}
             </option>
           ))}
         </select>
+
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {dates
+            .slice()
+            .reverse()
+            .map((d) => {
+              const has = entered.has(d);
+              const isSel = d === date;
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDate(d)}
+                  title={`${formatTR(d)}${has ? ` — ${entered.get(d)} puan` : " — puan girilmedi"}`}
+                  aria-label={`${formatTR(d)}${has ? " puan girildi" : " puan girilmedi"}`}
+                  className={`h-6 w-6 rounded-full text-[10px] font-semibold tabular-nums transition-colors ${
+                    has
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  } ${isSel ? "ring-2 ring-gold ring-offset-1 ring-offset-card" : ""}`}
+                >
+                  {Number(d.slice(-2))}
+                </button>
+              );
+            })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Dolu daireler puan girilen günleri gösterir.
+        </p>
       </div>
+
 
       <div className="space-y-2">
         <Label htmlFor="team">Takım</Label>
