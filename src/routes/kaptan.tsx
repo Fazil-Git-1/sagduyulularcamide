@@ -361,6 +361,28 @@ function TeamManager({ teams }: { teams: Team[] }) {
           <span className="sr-only">Takım ekle</span>
         </Button>
       </form>
+
+      <div className="rounded-3xl border border-destructive/40 bg-destructive/5 p-5">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-destructive">
+          <AlertTriangle className="h-4 w-4" aria-hidden />
+          Tehlikeli Alan
+        </h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Tüm günlük puanlar silinir, takım toplamları sıfırlanır ve yarışma 1. Güne
+          döner. Bu işlem geri alınamaz.
+        </p>
+        <Button
+          type="button"
+          variant="destructive"
+          className="mt-4 h-11 w-full"
+          disabled={resetting}
+          onClick={resetSystem}
+        >
+          <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
+          {resetting ? "Sıfırlanıyor…" : "Sistemi Sıfırla"}
+        </Button>
+      </div>
     </div>
+
   );
 }
