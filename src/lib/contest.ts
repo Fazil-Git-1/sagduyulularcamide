@@ -1,11 +1,14 @@
 export const CONTEST_DAYS = 30;
 export const CAPTAIN_PIN = "1234";
 
+/** Istanbul-local ISO date, deterministic on server and client (avoids hydration drift). */
 export function toISODate(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Istanbul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
 }
 
 export function todayISO(): string {
