@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { teamsQuery } from "@/lib/queries";
+import { teamsQuery, teamScoresQuery } from "@/lib/queries";
 import { CAPTAIN_PIN, formatTR, selectableDates, todayISO } from "@/lib/contest";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, Lock, Plus } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Lock, Plus, RotateCcw } from "lucide-react";
 
 export const Route = createFileRoute("/kaptan")({
   head: () => ({
@@ -47,9 +47,15 @@ function CaptainPage() {
             <ArrowLeft className="h-5 w-5" aria-hidden />
             <span className="sr-only">Ana ekrana dön</span>
           </Link>
-          <h1 className="text-lg font-semibold">Kaptan Paneli</h1>
+          <div>
+            <span className="block text-lg font-extrabold tracking-tight">
+              Sağduyulular Camide
+            </span>
+            <h1 className="text-xs opacity-80">Kaptan Paneli</h1>
+          </div>
         </div>
       </header>
+
       <div className="mx-auto max-w-2xl px-4 py-6">
         {unlocked ? <CaptainDashboard /> : <PinGate onSuccess={() => setUnlocked(true)} />}
       </div>
@@ -146,6 +152,8 @@ function ScoreForm({ teams }: { teams: Team[] }) {
   const [saving, setSaving] = useState(false);
 
   const selectedTeam = teamId || activeTeams[0]?.id || "";
+  const { data: entries = [] } = useQuery(teamScoresQuery(selectedTeam));
+  const entered = new Map(entries.map((e) => [e.date, e.score]));
 
   useEffect(() => {
     if (!selectedTeam) return;
@@ -181,7 +189,9 @@ function ScoreForm({ teams }: { teams: Team[] }) {
     }
     toast.success("Puan kaydedildi.");
     queryClient.invalidateQueries({ queryKey: ["teams"] });
+    queryClient.invalidateQueries({ queryKey: ["scores", selectedTeam] });
   }
+
 
   return (
     <form
@@ -198,12 +208,44 @@ function ScoreForm({ teams }: { teams: Team[] }) {
         >
           {dates.map((d) => (
             <option key={d} value={d}>
+              {entered.has(d) ? "● " : "○ "}
               {formatTR(d)}
               {d === todayISO() ? " (Bugün)" : ""}
+              {entered.has(d) ? ` — ${entered.get(d)} puan` : ""}
             </option>
           ))}
         </select>
+
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {dates
+            .slice()
+            .reverse()
+            .map((d) => {
+              const has = entered.has(d);
+              const isSel = d === date;
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDate(d)}
+                  title={`${formatTR(d)}${has ? ` — ${entered.get(d)} puan` : " — puan girilmedi"}`}
+                  aria-label={`${formatTR(d)}${has ? " puan girildi" : " puan girilmedi"}`}
+                  className={`h-6 w-6 rounded-full text-[10px] font-semibold tabular-nums transition-colors ${
+                    has
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  } ${isSel ? "ring-2 ring-gold ring-offset-1 ring-offset-card" : ""}`}
+                >
+                  {Number(d.slice(-2))}
+                </button>
+              );
+            })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Dolu daireler puan girilen günleri gösterir.
+        </p>
       </div>
+
 
       <div className="space-y-2">
         <Label htmlFor="team">Takım</Label>
@@ -244,6 +286,38 @@ function ScoreForm({ teams }: { teams: Team[] }) {
 function TeamManager({ teams }: { teams: Team[] }) {
   const queryClient = useQueryClient();
   const [newName, setNewName] = useState("");
+  const [resetting, setResetting] = useState(false);
+
+  async function resetSystem() {
+    if (
+      !window.confirm(
+        "Tüm puanlar silinecek ve yarışma 1. Güne dönecek. Devam edilsin mi?",
+      )
+    )
+      return;
+    setResetting(true);
+    const del = await supabase
+      .from("scores")
+      .delete()
+      .not("id", "is", null);
+    if (del.error) {
+      setResetting(false);
+      toast.error("Sıfırlanamadı: " + del.error.message);
+      return;
+    }
+    await supabase.from("teams").update({ total_score: 0 }).not("id", "is", null);
+    const upd = await supabase
+      .from("contest_settings")
+      .update({ start_date: todayISO() })
+      .eq("id", 1);
+    setResetting(false);
+    if (upd.error) {
+      toast.error("Tarih sıfırlanamadı: " + upd.error.message);
+      return;
+    }
+    toast.success("Sistem sıfırlandı. Yarışma 1. Günden başlıyor.");
+    queryClient.invalidateQueries();
+  }
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["teams"] });
 
@@ -319,6 +393,28 @@ function TeamManager({ teams }: { teams: Team[] }) {
           <span className="sr-only">Takım ekle</span>
         </Button>
       </form>
+
+      <div className="rounded-3xl border border-destructive/40 bg-destructive/5 p-5">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-destructive">
+          <AlertTriangle className="h-4 w-4" aria-hidden />
+          Tehlikeli Alan
+        </h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Tüm günlük puanlar silinir, takım toplamları sıfırlanır ve yarışma 1. Güne
+          döner. Bu işlem geri alınamaz.
+        </p>
+        <Button
+          type="button"
+          variant="destructive"
+          className="mt-4 h-11 w-full"
+          disabled={resetting}
+          onClick={resetSystem}
+        >
+          <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
+          {resetting ? "Sıfırlanıyor…" : "Sistemi Sıfırla"}
+        </Button>
+      </div>
     </div>
+
   );
 }

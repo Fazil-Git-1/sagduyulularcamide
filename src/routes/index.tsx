@@ -69,12 +69,12 @@ function Leaderboard() {
 
   return (
     <main className="min-h-screen bg-background pb-16">
-      <header className="bg-hero-gradient px-5 pb-10 pt-10 text-primary-foreground">
+      <header className="bg-hero-gradient px-5 pb-10 pt-8 text-primary-foreground">
         <div className="mx-auto max-w-2xl">
-          <p className="text-xs uppercase tracking-[0.25em] opacity-80">30 Günlük Yarışma</p>
-          <h1 className="mt-2 text-3xl font-bold leading-tight sm:text-4xl">
-            Namaz Yarışması
+          <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+            Sağduyulular Camide
           </h1>
+
 
           <div className="mt-7 rounded-2xl bg-primary-foreground/10 p-4 backdrop-blur-sm">
             <div className="flex items-end justify-between text-sm">
