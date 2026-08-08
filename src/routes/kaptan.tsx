@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, Lock, Plus } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Lock, Plus, RotateCcw } from "lucide-react";
 
 export const Route = createFileRoute("/kaptan")({
   head: () => ({
@@ -286,6 +286,38 @@ function ScoreForm({ teams }: { teams: Team[] }) {
 function TeamManager({ teams }: { teams: Team[] }) {
   const queryClient = useQueryClient();
   const [newName, setNewName] = useState("");
+  const [resetting, setResetting] = useState(false);
+
+  async function resetSystem() {
+    if (
+      !window.confirm(
+        "Tüm puanlar silinecek ve yarışma 1. Güne dönecek. Devam edilsin mi?",
+      )
+    )
+      return;
+    setResetting(true);
+    const del = await supabase
+      .from("scores")
+      .delete()
+      .not("id", "is", null);
+    if (del.error) {
+      setResetting(false);
+      toast.error("Sıfırlanamadı: " + del.error.message);
+      return;
+    }
+    await supabase.from("teams").update({ total_score: 0 }).not("id", "is", null);
+    const upd = await supabase
+      .from("contest_settings")
+      .update({ start_date: todayISO() })
+      .eq("id", 1);
+    setResetting(false);
+    if (upd.error) {
+      toast.error("Tarih sıfırlanamadı: " + upd.error.message);
+      return;
+    }
+    toast.success("Sistem sıfırlandı. Yarışma 1. Günden başlıyor.");
+    queryClient.invalidateQueries();
+  }
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["teams"] });
 
