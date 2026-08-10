@@ -1,5 +1,5 @@
 export const CONTEST_DAYS = 30;
-export const CAPTAIN_PIN = "1234";
+export const CAPTAIN_PIN = "5929";
 
 /** Istanbul-local ISO date, deterministic on server and client (avoids hydration drift). */
 export function toISODate(d: Date): string {
