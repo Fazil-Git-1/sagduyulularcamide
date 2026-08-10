@@ -54,7 +54,26 @@ function useRealtimeSync() {
   }, [queryClient]);
 }
 
-const medal = ["🥇", "🥈", "🥉"];
+/** Emoji-free rank badge so it renders identically on every device. */
+function RankBadge({ rank }: { rank: number }) {
+  const styles =
+    rank === 1
+      ? "bg-gold-gradient text-gold-foreground border-transparent"
+      : rank === 2
+        ? "border-muted-foreground/40 bg-muted text-foreground"
+        : rank === 3
+          ? "border-accent/50 bg-accent/20 text-accent-foreground"
+          : "border-border bg-background text-muted-foreground";
+
+  return (
+    <span
+      aria-hidden
+      className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border text-xs font-bold tabular-nums ${styles}`}
+    >
+      {rank}
+    </span>
+  );
+}
 
 function Leaderboard() {
   const { data: teams } = useSuspenseQuery(teamsQuery);
@@ -68,36 +87,36 @@ function Leaderboard() {
   const max = Math.max(...active.map((t) => t.total_score), 1);
 
   return (
-    <main className="min-h-screen bg-background pb-16">
-      <header className="bg-hero-gradient px-5 pb-10 pt-8 text-primary-foreground">
+    <main className="min-h-screen overflow-x-hidden bg-background pb-10">
+      <header className="bg-hero-gradient px-4 pb-8 pt-6 text-primary-foreground sm:px-5 sm:pb-10 sm:pt-8">
         <div className="mx-auto max-w-2xl">
-          <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+          <h1 className="text-2xl font-extrabold leading-tight tracking-tight sm:text-4xl">
             Sağduyulular Camide
           </h1>
 
-
-          <div className="mt-7 rounded-2xl bg-primary-foreground/10 p-4 backdrop-blur-sm">
-            <div className="flex items-end justify-between text-sm">
-              <span className="font-medium">
+          <div className="mt-4 rounded-2xl bg-primary-foreground/10 p-3.5 backdrop-blur-sm sm:mt-6 sm:p-4">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="min-w-0 truncate font-semibold">
                 {day}. Gün <span className="opacity-70">/ {CONTEST_DAYS}</span>
               </span>
-              <span className="opacity-80">{remaining} gün kaldı</span>
+              <span className="shrink-0 text-xs opacity-80">
+                %{pct} · {remaining} gün kaldı
+              </span>
             </div>
-            <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-primary-foreground/20">
+            <div className="mt-2.5 h-2.5 w-full overflow-hidden rounded-full bg-primary-foreground/20">
               <div
                 className="h-full rounded-full bg-gold-gradient transition-all duration-700"
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <p className="mt-2 text-right text-xs opacity-75">%{pct} tamamlandı</p>
           </div>
         </div>
       </header>
 
-      <section className="mx-auto -mt-6 max-w-2xl px-4">
-        <div className="rounded-3xl border border-border bg-card p-4 shadow-soft sm:p-6">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
-            <Trophy className="h-5 w-5 text-gold" aria-hidden />
+      <section className="mx-auto -mt-5 max-w-2xl px-3 sm:px-4">
+        <div className="rounded-3xl border border-border bg-card p-3.5 shadow-soft sm:p-6">
+          <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground sm:text-lg">
+            <Trophy className="h-5 w-5 shrink-0 text-gold" aria-hidden />
             Liderlik Tablosu
           </h2>
 
@@ -106,28 +125,26 @@ function Leaderboard() {
               Henüz aktif takım yok.
             </p>
           ) : (
-            <ol className="space-y-2.5">
+            <ol className="space-y-2">
               {active.map((team, i) => (
                 <li
                   key={team.id}
-                  className={`rounded-2xl border p-3.5 transition-colors ${
+                  className={`rounded-2xl border px-3 py-2.5 transition-colors ${
                     i === 0
                       ? "border-gold/60 bg-gold/10"
                       : "border-border bg-secondary/40"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="w-7 shrink-0 text-center text-base font-bold text-muted-foreground">
-                      {medal[i] ?? i + 1}
-                    </span>
-                    <span className="flex-1 truncate font-semibold text-foreground">
+                  <div className="flex items-center gap-2.5">
+                    <RankBadge rank={i + 1} />
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground sm:text-base">
                       {team.name}
                     </span>
-                    <span className="shrink-0 text-lg font-bold tabular-nums text-primary">
+                    <span className="shrink-0 text-base font-bold tabular-nums text-primary sm:text-lg">
                       {team.total_score}
                     </span>
                   </div>
-                  <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
                       className={`h-full rounded-full transition-all duration-700 ${
                         i === 0 ? "bg-gold-gradient" : "bg-primary/70"
@@ -143,12 +160,12 @@ function Leaderboard() {
           )}
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mt-6 pb-safe text-center">
           <Link
             to="/kaptan"
-            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-card px-5 text-sm font-medium text-muted-foreground transition-colors active:bg-secondary"
           >
-            <KeyRound className="h-3.5 w-3.5" aria-hidden />
+            <KeyRound className="h-4 w-4 shrink-0" aria-hidden />
             Kaptan Girişi
           </Link>
         </div>
