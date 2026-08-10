@@ -263,10 +263,7 @@ function ScoreForm({ teams }: { teams: Team[] }) {
 
         <div className="-mx-4 mt-3 overflow-x-auto px-4 pb-1">
           <div className="flex gap-2">
-            {dates
-              .slice()
-              .reverse()
-              .map((d) => {
+            {dates.map((d) => {
                 const has = entered.has(d);
                 const isSel = d === date;
                 return (
@@ -295,8 +292,8 @@ function ScoreForm({ teams }: { teams: Team[] }) {
                       }`}
                     />
                   </button>
-                );
-              })}
+              );
+            })}
           </div>
         </div>
 
