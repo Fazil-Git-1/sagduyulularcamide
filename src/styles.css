@@ -168,6 +168,11 @@
   box-shadow: var(--shadow-soft);
 }
 
+@utility pb-safe {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+}
+
+
 @layer base {
   body {
     font-family: var(--font-sans);
