@@ -124,6 +124,12 @@ function ScoreForm({ teams, pin }: { teams: Team[]; pin: string }) {
   const total = computeScore(counts);
 
   useEffect(() => {
+    setDate(todayISO());
+    const el = stripRef.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [selectedTeam]);
+
+  useEffect(() => {
     if (!selectedTeam) return;
     let cancelled = false;
     supabase
