@@ -3,7 +3,14 @@ import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { teamsQuery } from "@/lib/queries";
-import { ADMIN_PIN, todayISO } from "@/lib/contest";
+import { todayISO } from "@/lib/contest";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  addTeam as addTeamFn,
+  renameTeam as renameTeamFn,
+  resetSystem as resetSystemFn,
+  setTeamActive as setTeamActiveFn,
+} from "@/lib/contest.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -43,7 +50,8 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminPage() {
-  const [unlocked, setUnlocked] = useState(false);
+  const [pin, setPin] = useState<string | null>(null);
+  const unlocked = pin !== null;
   return (
     <main className="min-h-screen overflow-x-hidden bg-background">
       <header className="bg-hero-gradient px-4 py-4 text-primary-foreground sm:px-5 sm:py-6">
@@ -66,13 +74,13 @@ function AdminPage() {
 
       <div className="mx-auto max-w-2xl px-3 py-5 sm:px-4 sm:py-6">
         {unlocked ? (
-          <AdminDashboard />
+          <AdminDashboard pin={pin} />
         ) : (
           <PinGate
-            pin={ADMIN_PIN}
+            role="admin"
             title="Yönetici Doğrulama"
             description="4 haneli yönetici PIN kodunu girin."
-            onSuccess={() => setUnlocked(true)}
+            onSuccess={setPin}
           />
         )}
       </div>
@@ -82,7 +90,7 @@ function AdminPage() {
 
 type Team = { id: string; name: string; is_active: boolean; total_score: number };
 
-function AdminDashboard() {
+function AdminDashboard({ pin }: { pin: string }) {
   const queryClient = useQueryClient();
   const { data: teams } = useSuspenseQuery(teamsQuery);
 
@@ -98,32 +106,28 @@ function AdminDashboard() {
     };
   }, [queryClient]);
 
-  return <TeamManager teams={teams} />;
+  return <TeamManager teams={teams} pin={pin} />;
 }
 
-function TeamManager({ teams }: { teams: Team[] }) {
+function TeamManager({ teams, pin }: { teams: Team[]; pin: string }) {
   const queryClient = useQueryClient();
+  const doRename = useServerFn(renameTeamFn);
+  const doToggle = useServerFn(setTeamActiveFn);
+  const doAdd = useServerFn(addTeamFn);
+  const doReset = useServerFn(resetSystemFn);
   const [newName, setNewName] = useState("");
   const [resetting, setResetting] = useState(false);
 
   async function resetSystem() {
     setResetting(true);
-    const del = await supabase.from("scores").delete().not("id", "is", null);
-    if (del.error) {
+    try {
+      await doReset({ data: { pin, start_date: todayISO() } });
+    } catch (err) {
       setResetting(false);
-      toast.error("Sıfırlanamadı: " + del.error.message);
+      toast.error("Sıfırlanamadı: " + (err as Error).message);
       return;
     }
-    await supabase.from("teams").update({ total_score: 0 }).not("id", "is", null);
-    const upd = await supabase
-      .from("contest_settings")
-      .update({ start_date: todayISO() })
-      .eq("id", 1);
     setResetting(false);
-    if (upd.error) {
-      toast.error("Tarih sıfırlanamadı: " + upd.error.message);
-      return;
-    }
     toast.success("Sistem sıfırlandı. Yarışma 1. Günden başlıyor.");
     queryClient.invalidateQueries();
   }
@@ -131,29 +135,34 @@ function TeamManager({ teams }: { teams: Team[] }) {
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["teams"] });
 
   async function rename(id: string, name: string) {
-    const { error } = await supabase.from("teams").update({ name }).eq("id", id);
-    if (error) toast.error("Güncellenemedi: " + error.message);
-    else refresh();
+    try {
+      await doRename({ data: { pin, id, name } });
+      refresh();
+    } catch (err) {
+      toast.error("Güncellenemedi: " + (err as Error).message);
+    }
   }
 
   async function toggle(id: string, is_active: boolean) {
-    const { error } = await supabase.from("teams").update({ is_active }).eq("id", id);
-    if (error) toast.error("Güncellenemedi: " + error.message);
-    else {
+    try {
+      await doToggle({ data: { pin, id, is_active } });
       toast.success(is_active ? "Takım aktif edildi." : "Takım pasife alındı.");
       refresh();
+    } catch (err) {
+      toast.error("Güncellenemedi: " + (err as Error).message);
     }
   }
 
   async function addTeam(e: React.FormEvent) {
     e.preventDefault();
     if (!newName.trim()) return;
-    const { error } = await supabase.from("teams").insert({ name: newName.trim() });
-    if (error) toast.error("Eklenemedi: " + error.message);
-    else {
+    try {
+      await doAdd({ data: { pin, name: newName.trim() } });
       setNewName("");
       toast.success("Takım eklendi.");
       refresh();
+    } catch (err) {
+      toast.error("Eklenemedi: " + (err as Error).message);
     }
   }
 
