@@ -67,7 +67,7 @@ export function PinGate({
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        check(digits);
+        void check(digits);
       }}
       className="mx-auto mt-6 max-w-sm rounded-3xl border border-border bg-card p-5 text-center shadow-soft sm:p-6"
     >
