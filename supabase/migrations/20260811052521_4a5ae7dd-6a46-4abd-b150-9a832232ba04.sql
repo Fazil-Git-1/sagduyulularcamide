@@ -1,0 +1,4 @@
+ALTER TABLE public.scores
+  ADD COLUMN IF NOT EXISTS fajr_count integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS isha_count integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS ishraq_count integer NOT NULL DEFAULT 0;

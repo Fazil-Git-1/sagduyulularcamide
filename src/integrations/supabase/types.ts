@@ -33,7 +33,10 @@ export type Database = {
         Row: {
           created_at: string
           date: string
+          fajr_count: number
           id: string
+          isha_count: number
+          ishraq_count: number
           score: number
           team_id: string
           updated_at: string
@@ -41,7 +44,10 @@ export type Database = {
         Insert: {
           created_at?: string
           date: string
+          fajr_count?: number
           id?: string
+          isha_count?: number
+          ishraq_count?: number
           score?: number
           team_id: string
           updated_at?: string
@@ -49,7 +55,10 @@ export type Database = {
         Update: {
           created_at?: string
           date?: string
+          fajr_count?: number
           id?: string
+          isha_count?: number
+          ishraq_count?: number
           score?: number
           team_id?: string
           updated_at?: string
