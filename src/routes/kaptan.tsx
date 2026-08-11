@@ -111,7 +111,8 @@ function ScoreForm({ teams, pin }: { teams: Team[]; pin: string }) {
   const queryClient = useQueryClient();
   const submitScore = useServerFn(saveScore);
   const activeTeams = teams.filter((t) => t.is_active);
-  const dates = selectableDates();
+  const dates = [...selectableDates()].reverse();
+  const stripRef = useRef<HTMLDivElement>(null);
   const [date, setDate] = useState(todayISO());
   const [teamId, setTeamId] = useState("");
   const [counts, setCounts] = useState<PrayerCounts>(emptyCounts());
