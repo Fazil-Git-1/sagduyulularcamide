@@ -13,7 +13,6 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "../components/ui/sonner";
 
-
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -95,6 +94,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:description", content: "30 günlük namaz yarışmasının canlı liderlik tablosu: takım puanları ve gün ilerlemesi anlık olarak burada." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bd1870daaffdc71ea97d59fee9eb0f0d/id-preview-c98ac831--d2f6a3da-7e9e-4bb7-b10c-103b398cb059.lovable.app-1786222839322.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bd1870daaffdc71ea97d59fee9eb0f0d/id-preview-c98ac831--d2f6a3da-7e9e-4bb7-b10c-103b398cb059.lovable.app-1786222839322.png" },
+      
+      /* --- PWA ve Tema Meta Ayarları --- */
+      { name: "theme-color", content: "#064e3b" },
+      { name: "apple-mobile-web-app-capable", content="yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Namaz Yarışması" }
     ],
     links: [
       {
@@ -107,6 +112,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
       },
+      
+      /* --- PWA Manifest ve İkon Linkleri --- */
+      { rel: "manifest", href: "/manifest.json" },
+      { rel: "apple-touch-icon", href: "/icon-192x192.png" }
     ],
   }),
 
@@ -141,4 +150,3 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
-
