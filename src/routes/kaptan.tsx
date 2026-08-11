@@ -112,8 +112,13 @@ function ScoreForm({ teams, pin }: { teams: Team[]; pin: string }) {
   const submitScore = useServerFn(saveScore);
   const activeTeams = teams.filter((t) => t.is_active);
   
-  // Sadece yarışma başlangıcından bu yana olan (maks 31 gün) tarihleri al
-  const dates = [...selectableDates()].slice(0, 31).reverse(); 
+// Yarışmayı baştan başlattığınız tarihi YYYY-MM-DD formatında buraya girin.
+  // Bu tarihten öncesi ekranda görünmez ve gün hesaplaması buradan başlar.
+  const START_DATE = "2026-08-09"; // Kendi sıfırladığınız tarihe göre güncelleyin
+  
+  const dates = [...selectableDates()]
+    .filter((d) => d >= START_DATE)
+    .reverse();
   
   const stripRef = useRef<HTMLDivElement>(null);
   const dateRefs = useRef<Record<string, HTMLButtonElement | null>>({});
