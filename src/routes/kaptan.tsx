@@ -179,10 +179,13 @@ function ScoreForm({ teams, pin }: { teams: Team[]; pin: string }) {
 
   return (
     <form onSubmit={save} className="space-y-4">
-      <div className="rounded-3xl border border-border bg-card p-4 shadow-soft">
+      <div className="rounded-3xl border border-border bg-card p-3 shadow-soft sm:p-4">
         <Label className="text-sm">Tarih</Label>
 
-        <div className="-mx-4 mt-3 overflow-x-auto px-4 pb-1">
+        <div
+          ref={stripRef}
+          className="-mx-3 mt-2 snap-x snap-mandatory overflow-x-auto px-3 pb-1 sm:-mx-4 sm:px-4"
+        >
           <div className="flex gap-2">
             {dates.map((d) => {
                 const has = entered.has(d);
@@ -194,7 +197,7 @@ function ScoreForm({ teams, pin }: { teams: Team[]; pin: string }) {
                     onClick={() => setDate(d)}
                     aria-pressed={isSel}
                     aria-label={`${formatTR(d)}${has ? " puan girildi" : " puan girilmedi"}`}
-                    className={`flex h-14 w-11 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border text-sm font-semibold tabular-nums transition-colors ${
+                    className={`flex h-12 w-10 shrink-0 snap-center flex-col items-center justify-center gap-1 rounded-2xl border text-sm font-semibold tabular-nums transition-colors ${
                       isSel
                         ? "border-primary bg-primary text-primary-foreground"
                         : "border-border bg-secondary/40 text-foreground"
