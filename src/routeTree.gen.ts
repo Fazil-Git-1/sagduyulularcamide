@@ -10,17 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as KaptanRouteImport } from './routes/kaptan'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as KaptanRouteImport } from './routes/kaptan'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const KaptanRoute = KaptanRouteImport.update({
-  id: '/kaptan',
-  path: '/kaptan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -28,35 +23,40 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KaptanRoute = KaptanRouteImport.update({
+  id: '/kaptan',
+  path: '/kaptan',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/kaptan': typeof KaptanRoute
   '/admin': typeof AdminRoute
+  '/kaptan': typeof KaptanRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/kaptan': typeof KaptanRoute
   '/admin': typeof AdminRoute
+  '/kaptan': typeof KaptanRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/kaptan': typeof KaptanRoute
   '/admin': typeof AdminRoute
+  '/kaptan': typeof KaptanRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/kaptan' | '/admin'
+  fullPaths: '/' | '/admin' | '/kaptan'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/kaptan' | '/admin'
-  id: '__root__' | '/' | '/kaptan' | '/admin'
+  to: '/' | '/admin' | '/kaptan'
+  id: '__root__' | '/' | '/admin' | '/kaptan'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  KaptanRoute: typeof KaptanRoute
   AdminRoute: typeof AdminRoute
+  KaptanRoute: typeof KaptanRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -68,13 +68,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/kaptan': {
-      id: '/kaptan'
-      path: '/kaptan'
-      fullPath: '/kaptan'
-      preLoaderRoute: typeof KaptanRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -82,13 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/kaptan': {
+      id: '/kaptan'
+      path: '/kaptan'
+      fullPath: '/kaptan'
+      preLoaderRoute: typeof KaptanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  KaptanRoute: KaptanRoute,
   AdminRoute: AdminRoute,
+  KaptanRoute: KaptanRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
