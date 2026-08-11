@@ -252,4 +252,59 @@ function ScoreForm({ teams }: { teams: Team[] }) {
                   {p.points}p
                 </span>
               </div>
-              <div className="grid grid-cols-[auto_minmax(0,1fr)
+              <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-11 w-11 shrink-0 rounded-full"
+                  onClick={() => step(p.key, -1)}
+                  aria-label={`${p.label} azalt`}
+                >
+                  <Minus className="h-4 w-4" aria-hidden />
+                </Button>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={counts[p.key]}
+                  onChange={(e) =>
+                    setCounts((c) => ({
+                      ...c,
+                      [p.key]: Math.max(Number(e.target.value) || 0, 0),
+                    }))
+                  }
+                  className="h-11 text-center text-base font-semibold tabular-nums"
+                  aria-label={`${p.label} kişi sayısı`}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-11 w-11 shrink-0 rounded-full"
+                  onClick={() => step(p.key, 1)}
+                  aria-label={`${p.label} artır`}
+                >
+                  <Plus className="h-4 w-4" aria-hidden />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-4 text-sm font-semibold text-foreground">
+          Günlük toplam:{" "}
+          <span className="text-primary tabular-nums">{total} puan</span>
+        </p>
+      </div>
+
+      <Button
+        type="submit"
+        disabled={saving || !selectedTeam}
+        className="h-12 w-full rounded-full text-base font-semibold"
+      >
+        {saving ? "Kaydediliyor…" : "Kaydet / Güncelle"}
+      </Button>
+    </form>
+  );
+}
