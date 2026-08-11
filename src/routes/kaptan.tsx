@@ -208,24 +208,34 @@ function ScoreForm({ teams }: { teams: Team[] }) {
   const dates = selectableDates();
   const [date, setDate] = useState(todayISO());
   const [teamId, setTeamId] = useState("");
-  const [score, setScore] = useState("");
+  const [counts, setCounts] = useState<PrayerCounts>(emptyCounts());
   const [saving, setSaving] = useState(false);
 
   const selectedTeam = teamId || activeTeams[0]?.id || "";
   const { data: entries = [] } = useQuery(teamScoresQuery(selectedTeam));
   const entered = new Map(entries.map((e) => [e.date, e.score]));
+  const total = computeScore(counts);
 
   useEffect(() => {
     if (!selectedTeam) return;
     let cancelled = false;
     supabase
       .from("scores")
-      .select("score")
+      .select("fajr_count, isha_count, ishraq_count")
       .eq("team_id", selectedTeam)
       .eq("date", date)
       .maybeSingle()
       .then(({ data }) => {
-        if (!cancelled) setScore(data ? String(data.score) : "");
+        if (cancelled) return;
+        setCounts(
+          data
+            ? {
+                fajr_count: data.fajr_count ?? 0,
+                isha_count: data.isha_count ?? 0,
+                ishraq_count: data.ishraq_count ?? 0,
+              }
+            : emptyCounts(),
+        );
       });
     return () => {
       cancelled = true;
@@ -238,23 +248,23 @@ function ScoreForm({ teams }: { teams: Team[] }) {
     setSaving(true);
     const { error } = await supabase
       .from("scores")
-      .upsert(
-        { team_id: selectedTeam, date, score: Number(score) || 0 },
-        { onConflict: "team_id,date" },
-      );
+      .upsert({ team_id: selectedTeam, date, ...counts, score: total }, {
+        onConflict: "team_id,date",
+      });
     setSaving(false);
     if (error) {
       toast.error("Kaydedilemedi: " + error.message);
       return;
     }
-    toast.success("Puan kaydedildi.");
+    toast.success(`Kaydedildi — ${total} puan.`);
     queryClient.invalidateQueries({ queryKey: ["teams"] });
     queryClient.invalidateQueries({ queryKey: ["scores", selectedTeam] });
   }
 
-  function step(delta: number) {
-    setScore((s) => String(Math.max((Number(s) || 0) + delta, 0)));
+  function step(key: PrayerKey, delta: number) {
+    setCounts((c) => ({ ...c, [key]: Math.max((c[key] || 0) + delta, 0) }));
   }
+
 
   return (
     <form onSubmit={save} className="space-y-4">
