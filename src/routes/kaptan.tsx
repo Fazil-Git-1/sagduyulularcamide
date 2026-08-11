@@ -339,41 +339,62 @@ function ScoreForm({ teams }: { teams: Team[] }) {
       </div>
 
       <div className="rounded-3xl border border-border bg-card p-4 shadow-soft">
-        <Label htmlFor="score" className="text-sm">
-          Puan
-        </Label>
-        <div className="mt-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-12 w-12 shrink-0"
-            onClick={() => step(-1)}
-            aria-label="Puanı azalt"
-          >
-            <Minus className="h-4 w-4" aria-hidden />
-          </Button>
-          <Input
-            id="score"
-            type="number"
-            inputMode="numeric"
-            value={score}
-            onChange={(e) => setScore(e.target.value)}
-            placeholder="0"
-            className="h-12 min-w-0 text-center text-lg font-bold tabular-nums"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-12 w-12 shrink-0"
-            onClick={() => step(1)}
-            aria-label="Puanı artır"
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-          </Button>
+        <Label className="text-sm">Kılınan namazlar (kişi sayısı)</Label>
+        <div className="mt-3 space-y-3">
+          {PRAYERS.map((p) => (
+            <div key={p.key}>
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="text-sm font-semibold text-foreground">{p.label}</span>
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-bold text-primary tabular-nums">
+                  {p.points}p
+                </span>
+              </div>
+              <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-12 w-12 shrink-0"
+                  onClick={() => step(p.key, -1)}
+                  aria-label={`${p.label} kişi sayısını azalt`}
+                >
+                  <Minus className="h-4 w-4" aria-hidden />
+                </Button>
+                <Input
+                  id={p.key}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={String(counts[p.key])}
+                  onChange={(e) =>
+                    setCounts((c) => ({
+                      ...c,
+                      [p.key]: Math.max(Number(e.target.value) || 0, 0),
+                    }))
+                  }
+                  placeholder="0"
+                  aria-label={`${p.label} kişi sayısı`}
+                  className="h-12 min-w-0 text-center text-lg font-bold tabular-nums"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-12 w-12 shrink-0"
+                  onClick={() => step(p.key, 1)}
+                  aria-label={`${p.label} kişi sayısını artır`}
+                >
+                  <Plus className="h-4 w-4" aria-hidden />
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
+        <p className="mt-4 rounded-2xl bg-secondary/50 px-3 py-2 text-center text-sm font-bold text-foreground tabular-nums">
+          Günlük toplam: {total} puan
+        </p>
       </div>
+
 
       <div className="sticky bottom-0 -mx-3 bg-gradient-to-t from-background via-background to-transparent px-3 pb-safe pt-3 sm:static sm:mx-0 sm:bg-none sm:px-0 sm:pt-0">
         <Button
