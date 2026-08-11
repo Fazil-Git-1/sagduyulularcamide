@@ -1,7 +1,5 @@
 export const CONTEST_DAYS = 30;
-export const CAPTAIN_PIN = "5929";
-// Değiştirmeyi unutma: bu PIN takım yönetimi ve sistem sıfırlamaya erişim sağlar.
-export const ADMIN_PIN = "3737";
+// PIN kodları yalnızca sunucuda tutulur (src/lib/pins.server.ts).
 
 export const PRAYERS = [
   { key: "fajr_count", label: "Sabah namazı", points: 5 },
