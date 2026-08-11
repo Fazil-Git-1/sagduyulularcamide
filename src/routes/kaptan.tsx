@@ -3,8 +3,9 @@ import { useSuspenseQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { teamsQuery, teamScoresQuery } from "@/lib/queries";
+import { useServerFn } from "@tanstack/react-start";
+import { saveScore } from "@/lib/contest.functions";
 import {
-  CAPTAIN_PIN,
   PRAYERS,
   computeScore,
   emptyCounts,
@@ -47,7 +48,8 @@ export const Route = createFileRoute("/kaptan")({
 });
 
 function CaptainPage() {
-  const [unlocked, setUnlocked] = useState(false);
+  const [pin, setPin] = useState<string | null>(null);
+  const unlocked = pin !== null;
   return (
     <main className="min-h-screen overflow-x-hidden bg-background">
       <header className="bg-hero-gradient px-4 py-4 text-primary-foreground sm:px-5 sm:py-6">
@@ -70,13 +72,13 @@ function CaptainPage() {
 
       <div className="mx-auto max-w-2xl px-3 py-5 sm:px-4 sm:py-6">
         {unlocked ? (
-          <CaptainDashboard />
+          <CaptainDashboard pin={pin} />
         ) : (
           <PinGate
-            pin={CAPTAIN_PIN}
+            role="captain"
             title="Yetki Doğrulama"
             description="4 haneli kaptan PIN kodunu girin."
-            onSuccess={() => setUnlocked(true)}
+            onSuccess={setPin}
           />
         )}
       </div>
@@ -84,7 +86,7 @@ function CaptainPage() {
   );
 }
 
-function CaptainDashboard() {
+function CaptainDashboard({ pin }: { pin: string }) {
   const queryClient = useQueryClient();
   const { data: teams } = useSuspenseQuery(teamsQuery);
 
@@ -100,13 +102,14 @@ function CaptainDashboard() {
     };
   }, [queryClient]);
 
-  return <ScoreForm teams={teams} />;
+  return <ScoreForm teams={teams} pin={pin} />;
 }
 
 type Team = { id: string; name: string; is_active: boolean; total_score: number };
 
-function ScoreForm({ teams }: { teams: Team[] }) {
+function ScoreForm({ teams, pin }: { teams: Team[]; pin: string }) {
   const queryClient = useQueryClient();
+  const submitScore = useServerFn(saveScore);
   const activeTeams = teams.filter((t) => t.is_active);
   const dates = selectableDates();
   const [date, setDate] = useState(todayISO());
@@ -149,16 +152,14 @@ function ScoreForm({ teams }: { teams: Team[] }) {
     e.preventDefault();
     if (!selectedTeam) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("scores")
-      .upsert({ team_id: selectedTeam, date, ...counts, score: total }, {
-        onConflict: "team_id,date",
-      });
-    setSaving(false);
-    if (error) {
-      toast.error("Kaydedilemedi: " + error.message);
+    try {
+      await submitScore({ data: { pin, team_id: selectedTeam, date, ...counts } });
+    } catch (err) {
+      setSaving(false);
+      toast.error("Kaydedilemedi: " + (err as Error).message);
       return;
     }
+    setSaving(false);
     toast.success(`Kaydedildi — ${total} puan.`);
     queryClient.invalidateQueries({ queryKey: ["teams"] });
     queryClient.invalidateQueries({ queryKey: ["scores", selectedTeam] });
