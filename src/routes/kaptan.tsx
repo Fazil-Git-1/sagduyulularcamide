@@ -3,7 +3,17 @@ import { useSuspenseQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { teamsQuery, teamScoresQuery } from "@/lib/queries";
-import { CAPTAIN_PIN, formatTR, selectableDates, todayISO } from "@/lib/contest";
+import {
+  CAPTAIN_PIN,
+  PRAYERS,
+  computeScore,
+  emptyCounts,
+  formatTR,
+  selectableDates,
+  todayISO,
+  type PrayerCounts,
+  type PrayerKey,
+} from "@/lib/contest";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
