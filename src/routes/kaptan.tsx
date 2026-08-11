@@ -111,8 +111,13 @@ function ScoreForm({ teams, pin }: { teams: Team[]; pin: string }) {
   const queryClient = useQueryClient();
   const submitScore = useServerFn(saveScore);
   const activeTeams = teams.filter((t) => t.is_active);
-  const dates = [...selectableDates()].reverse();
+  
+  // Sadece yarışma başlangıcından bu yana olan (maks 31 gün) tarihleri al
+  const dates = [...selectableDates()].slice(0, 31).reverse(); 
+  
   const stripRef = useRef<HTMLDivElement>(null);
+  const dateRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  
   const [date, setDate] = useState(todayISO());
   const [teamId, setTeamId] = useState("");
   const [counts, setCounts] = useState<PrayerCounts>(emptyCounts());
@@ -123,11 +128,13 @@ function ScoreForm({ teams, pin }: { teams: Team[]; pin: string }) {
   const entered = new Map(entries.map((e) => [e.date, e.score]));
   const total = computeScore(counts);
 
+  // Auto-scroll (Mıknatıs Efekti): Tarih veya takım değiştiğinde seçili tarihi ekranın merkezine kaydır
   useEffect(() => {
-    setDate(todayISO());
-    const el = stripRef.current;
-    if (el) el.scrollLeft = el.scrollWidth;
-  }, [selectedTeam]);
+    const el = dateRefs.current[date];
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
+  }, [date, selectedTeam]);
 
   useEffect(() => {
     if (!selectedTeam) return;
@@ -176,55 +183,72 @@ function ScoreForm({ teams, pin }: { teams: Team[]; pin: string }) {
     setCounts((c) => ({ ...c, [key]: Math.max((c[key] || 0) + delta, 0) }));
   }
 
-
   return (
     <form onSubmit={save} className="space-y-4">
-      <div className="rounded-3xl border border-border bg-card p-3 shadow-soft sm:p-4">
-        <Label className="text-sm">Tarih</Label>
+      <div className="overflow-hidden rounded-3xl border border-border bg-card p-3 shadow-soft sm:p-4">
+        <div className="flex items-center justify-between">
+          <Label className="text-sm">Tarih</Label>
+          {/* Hızlı Navigasyon Butonu */}
+          {date !== todayISO() && (
+            <button
+              type="button"
+              onClick={() => setDate(todayISO())}
+              className="text-xs font-bold text-primary transition-opacity hover:opacity-80"
+            >
+              Bugüne Dön
+            </button>
+          )}
+        </div>
 
+        {/* Yatay Kaydırma & Carousel Alanı */}
         <div
           ref={stripRef}
-          className="-mx-3 mt-2 snap-x snap-mandatory overflow-x-auto px-3 pb-1 sm:-mx-4 sm:px-4"
+          className="[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-3 mt-4 flex snap-x snap-mandatory overflow-x-auto px-[35vw] pb-4 pt-2 sm:-mx-4 sm:px-[200px]"
         >
-          <div className="flex gap-2">
+          <div className="flex gap-4">
             {dates.map((d) => {
-                const has = entered.has(d);
-                const isSel = d === date;
-                return (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDate(d)}
-                    aria-pressed={isSel}
-                    aria-label={`${formatTR(d)}${has ? " puan girildi" : " puan girilmedi"}`}
-                    className={`flex h-12 w-10 shrink-0 snap-center flex-col items-center justify-center gap-1 rounded-2xl border text-sm font-semibold tabular-nums transition-colors ${
-                      isSel
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-secondary/40 text-foreground"
-                    }`}
-                  >
-                    {Number(d.slice(-2))}
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        has
-                          ? isSel
-                            ? "bg-gold"
-                            : "bg-primary"
-                          : isSel
-                            ? "bg-primary-foreground/30"
-                            : "bg-muted-foreground/30"
-                      }`}
-                    />
-                  </button>
+              const score = entered.get(d) || 0;
+              const has = entered.has(d);
+              const isSel = d === date;
+              
+              // Akıllı Durum Noktaları Mantığı
+              let dotColor = "bg-muted-foreground/30";
+              if (has) {
+                dotColor = score >= 15 ? "bg-green-500" : "bg-yellow-500";
+              }
+
+              return (
+                <button
+                  key={d}
+                  ref={(el) => (dateRefs.current[d] = el)}
+                  type="button"
+                  onClick={() => setDate(d)}
+                  aria-pressed={isSel}
+                  aria-label={`${formatTR(d)}${has ? " puan girildi" : " puan girilmedi"}`}
+                  className={`flex h-14 w-12 shrink-0 snap-center flex-col items-center justify-center gap-1 rounded-2xl border text-sm font-bold tabular-nums transition-all duration-300 ease-out ${
+                    isSel
+                      ? "scale-110 border-primary bg-primary text-primary-foreground opacity-100 shadow-md"
+                      : "scale-90 border-border bg-secondary/40 text-foreground opacity-50 blur-[1px] hover:opacity-80 hover:blur-none"
+                  }`}
+                >
+                  {Number(d.slice(-2))}
+                  <span className={`h-1.5 w-1.5 rounded-full transition-colors ${dotColor}`} />
+                </button>
               );
             })}
           </div>
         </div>
 
-        <p className="mt-2 text-xs text-muted-foreground">
+        {/* Aktif Günün Dinamik Metin ve X. Gün Vurgusu */}
+        <p className="mt-1 text-center text-xs font-medium text-muted-foreground">
           {formatTR(date)}
           {date === todayISO() ? " (Bugün)" : ""}
-          {entered.has(date) ? ` — kayıtlı: ${entered.get(date)} puan` : " — puan girilmedi"}
+          <span className="mx-2 text-border">•</span>
+          <span className="font-semibold text-foreground">{dates.indexOf(date) + 1}. Gün</span>
+          <br />
+          <span className="mt-1.5 block opacity-80">
+            {entered.has(date) ? `Kayıtlı: ${entered.get(date)} puan` : "Puan girilmedi"}
+          </span>
         </p>
       </div>
 
