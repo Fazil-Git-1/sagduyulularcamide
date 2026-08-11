@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { teamsQuery, settingsQuery } from "@/lib/queries";
 import { CONTEST_DAYS, currentDay } from "@/lib/contest";
-import { KeyRound, Trophy } from "lucide-react";
+import { KeyRound, ShieldCheck, Trophy } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -160,13 +160,20 @@ function Leaderboard() {
           )}
         </div>
 
-        <div className="mt-6 pb-safe text-center">
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2 pb-safe">
           <Link
             to="/kaptan"
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-card px-5 text-sm font-medium text-muted-foreground transition-colors active:bg-secondary"
           >
             <KeyRound className="h-4 w-4 shrink-0" aria-hidden />
             Kaptan Girişi
+          </Link>
+          <Link
+            to="/admin"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-card px-5 text-sm font-medium text-muted-foreground transition-colors active:bg-secondary"
+          >
+            <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden />
+            Yönetici Girişi
           </Link>
         </div>
       </section>
