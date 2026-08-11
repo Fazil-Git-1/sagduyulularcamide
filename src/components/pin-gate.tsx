@@ -1,26 +1,40 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Lock } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { verifyPin } from "@/lib/contest.functions";
 
 export function PinGate({
-  pin,
+  role,
   title,
   description,
   onSuccess,
 }: {
-  pin: string;
+  role: "captain" | "admin";
   title: string;
   description: string;
-  onSuccess: () => void;
+  /** Receives the verified PIN so it can authorize later write calls. */
+  onSuccess: (pin: string) => void;
 }) {
+  const verify = useServerFn(verifyPin);
   const [digits, setDigits] = useState(["", "", "", ""]);
   const [error, setError] = useState(false);
+  const [checking, setChecking] = useState(false);
   const refs = useRef<Array<HTMLInputElement | null>>([]);
 
-  function check(next: string[]) {
-    if (next.join("").length !== 4) return;
-    if (next.join("") === pin) {
-      onSuccess();
+  async function check(next: string[]) {
+    const pin = next.join("");
+    if (pin.length !== 4 || checking) return;
+    setChecking(true);
+    let ok = false;
+    try {
+      ok = (await verify({ data: { role, pin } })).ok;
+    } catch {
+      ok = false;
+    }
+    setChecking(false);
+    if (ok) {
+      onSuccess(pin);
     } else {
       setError(true);
       setDigits(["", "", "", ""]);
@@ -45,8 +59,9 @@ export function PinGate({
     setDigits(next);
     const focusAt = Math.min(index + value.length, 3);
     refs.current[focusAt]?.focus();
-    check(next);
+    void check(next);
   }
+
 
   return (
     <form
