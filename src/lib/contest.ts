@@ -1,5 +1,7 @@
 export const CONTEST_DAYS = 30;
 export const CAPTAIN_PIN = "5929";
+// Değiştirmeyi unutma: bu PIN takım yönetimi ve sistem sıfırlamaya erişim sağlar.
+export const ADMIN_PIN = "3737";
 
 export const PRAYERS = [
   { key: "fajr_count", label: "Sabah namazı", points: 5 },
@@ -62,4 +64,5 @@ export function formatTR(iso: string): string {
     month: "long",
     weekday: "short",
   });
+}
 }
