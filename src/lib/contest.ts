@@ -1,6 +1,26 @@
 export const CONTEST_DAYS = 30;
 export const CAPTAIN_PIN = "5929";
 
+export const PRAYERS = [
+  { key: "fajr_count", label: "Sabah namazı", points: 5 },
+  { key: "isha_count", label: "Yatsı namazı", points: 3 },
+  { key: "ishraq_count", label: "İşrak ibadeti", points: 3 },
+] as const;
+
+export type PrayerKey = (typeof PRAYERS)[number]["key"];
+
+export type PrayerCounts = Record<PrayerKey, number>;
+
+export const emptyCounts = (): PrayerCounts => ({
+  fajr_count: 0,
+  isha_count: 0,
+  ishraq_count: 0,
+});
+
+export function computeScore(counts: PrayerCounts): number {
+  return PRAYERS.reduce((sum, p) => sum + (counts[p.key] || 0) * p.points, 0);
+}
+
 /** Istanbul-local ISO date, deterministic on server and client (avoids hydration drift). */
 export function toISODate(d: Date): string {
   return new Intl.DateTimeFormat("en-CA", {

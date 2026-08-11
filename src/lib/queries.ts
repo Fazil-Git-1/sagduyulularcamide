@@ -30,14 +30,22 @@ export const teamsQuery = queryOptions({
   },
 });
 
+export type ScoreEntry = {
+  date: string;
+  score: number;
+  fajr_count: number;
+  isha_count: number;
+  ishraq_count: number;
+};
+
 export const teamScoresQuery = (teamId: string) =>
   queryOptions({
     queryKey: ["scores", teamId],
     enabled: !!teamId,
-    queryFn: async (): Promise<{ date: string; score: number }[]> => {
+    queryFn: async (): Promise<ScoreEntry[]> => {
       const { data, error } = await supabase
         .from("scores")
-        .select("date, score")
+        .select("date, score, fajr_count, isha_count, ishraq_count")
         .eq("team_id", teamId)
         .order("date", { ascending: false });
       if (error) throw error;

@@ -3,7 +3,17 @@ import { useSuspenseQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { teamsQuery, teamScoresQuery } from "@/lib/queries";
-import { CAPTAIN_PIN, formatTR, selectableDates, todayISO } from "@/lib/contest";
+import {
+  CAPTAIN_PIN,
+  PRAYERS,
+  computeScore,
+  emptyCounts,
+  formatTR,
+  selectableDates,
+  todayISO,
+  type PrayerCounts,
+  type PrayerKey,
+} from "@/lib/contest";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -208,24 +218,34 @@ function ScoreForm({ teams }: { teams: Team[] }) {
   const dates = selectableDates();
   const [date, setDate] = useState(todayISO());
   const [teamId, setTeamId] = useState("");
-  const [score, setScore] = useState("");
+  const [counts, setCounts] = useState<PrayerCounts>(emptyCounts());
   const [saving, setSaving] = useState(false);
 
   const selectedTeam = teamId || activeTeams[0]?.id || "";
   const { data: entries = [] } = useQuery(teamScoresQuery(selectedTeam));
   const entered = new Map(entries.map((e) => [e.date, e.score]));
+  const total = computeScore(counts);
 
   useEffect(() => {
     if (!selectedTeam) return;
     let cancelled = false;
     supabase
       .from("scores")
-      .select("score")
+      .select("fajr_count, isha_count, ishraq_count")
       .eq("team_id", selectedTeam)
       .eq("date", date)
       .maybeSingle()
       .then(({ data }) => {
-        if (!cancelled) setScore(data ? String(data.score) : "");
+        if (cancelled) return;
+        setCounts(
+          data
+            ? {
+                fajr_count: data.fajr_count ?? 0,
+                isha_count: data.isha_count ?? 0,
+                ishraq_count: data.ishraq_count ?? 0,
+              }
+            : emptyCounts(),
+        );
       });
     return () => {
       cancelled = true;
@@ -238,23 +258,23 @@ function ScoreForm({ teams }: { teams: Team[] }) {
     setSaving(true);
     const { error } = await supabase
       .from("scores")
-      .upsert(
-        { team_id: selectedTeam, date, score: Number(score) || 0 },
-        { onConflict: "team_id,date" },
-      );
+      .upsert({ team_id: selectedTeam, date, ...counts, score: total }, {
+        onConflict: "team_id,date",
+      });
     setSaving(false);
     if (error) {
       toast.error("Kaydedilemedi: " + error.message);
       return;
     }
-    toast.success("Puan kaydedildi.");
+    toast.success(`Kaydedildi — ${total} puan.`);
     queryClient.invalidateQueries({ queryKey: ["teams"] });
     queryClient.invalidateQueries({ queryKey: ["scores", selectedTeam] });
   }
 
-  function step(delta: number) {
-    setScore((s) => String(Math.max((Number(s) || 0) + delta, 0)));
+  function step(key: PrayerKey, delta: number) {
+    setCounts((c) => ({ ...c, [key]: Math.max((c[key] || 0) + delta, 0) }));
   }
+
 
   return (
     <form onSubmit={save} className="space-y-4">
@@ -329,41 +349,62 @@ function ScoreForm({ teams }: { teams: Team[] }) {
       </div>
 
       <div className="rounded-3xl border border-border bg-card p-4 shadow-soft">
-        <Label htmlFor="score" className="text-sm">
-          Puan
-        </Label>
-        <div className="mt-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-12 w-12 shrink-0"
-            onClick={() => step(-1)}
-            aria-label="Puanı azalt"
-          >
-            <Minus className="h-4 w-4" aria-hidden />
-          </Button>
-          <Input
-            id="score"
-            type="number"
-            inputMode="numeric"
-            value={score}
-            onChange={(e) => setScore(e.target.value)}
-            placeholder="0"
-            className="h-12 min-w-0 text-center text-lg font-bold tabular-nums"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-12 w-12 shrink-0"
-            onClick={() => step(1)}
-            aria-label="Puanı artır"
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-          </Button>
+        <Label className="text-sm">Kılınan namazlar (kişi sayısı)</Label>
+        <div className="mt-3 space-y-3">
+          {PRAYERS.map((p) => (
+            <div key={p.key}>
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="text-sm font-semibold text-foreground">{p.label}</span>
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-bold text-primary tabular-nums">
+                  {p.points}p
+                </span>
+              </div>
+              <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-12 w-12 shrink-0"
+                  onClick={() => step(p.key, -1)}
+                  aria-label={`${p.label} kişi sayısını azalt`}
+                >
+                  <Minus className="h-4 w-4" aria-hidden />
+                </Button>
+                <Input
+                  id={p.key}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={String(counts[p.key])}
+                  onChange={(e) =>
+                    setCounts((c) => ({
+                      ...c,
+                      [p.key]: Math.max(Number(e.target.value) || 0, 0),
+                    }))
+                  }
+                  placeholder="0"
+                  aria-label={`${p.label} kişi sayısı`}
+                  className="h-12 min-w-0 text-center text-lg font-bold tabular-nums"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-12 w-12 shrink-0"
+                  onClick={() => step(p.key, 1)}
+                  aria-label={`${p.label} kişi sayısını artır`}
+                >
+                  <Plus className="h-4 w-4" aria-hidden />
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
+        <p className="mt-4 rounded-2xl bg-secondary/50 px-3 py-2 text-center text-sm font-bold text-foreground tabular-nums">
+          Günlük toplam: {total} puan
+        </p>
       </div>
+
 
       <div className="sticky bottom-0 -mx-3 bg-gradient-to-t from-background via-background to-transparent px-3 pb-safe pt-3 sm:static sm:mx-0 sm:bg-none sm:px-0 sm:pt-0">
         <Button
