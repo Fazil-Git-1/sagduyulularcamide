@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { teamsQuery, teamScoresQuery } from "@/lib/queries";
 import {
@@ -17,21 +17,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { PinGate } from "@/components/pin-gate";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, Lock, Minus, Plus, RotateCcw } from "lucide-react";
+import { ArrowLeft, Minus, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/kaptan")({
   head: () => ({
@@ -39,7 +27,7 @@ export const Route = createFileRoute("/kaptan")({
       { title: "Kaptan Girişi — Namaz Yarışması" },
       {
         name: "description",
-        content: "Takım kaptanları için puan girişi ve takım yönetimi ekranı.",
+        content: "Takım kaptanları için günlük puan girişi ekranı.",
       },
       { property: "og:title", content: "Kaptan Girişi — Namaz Yarışması" },
       {
@@ -81,96 +69,18 @@ function CaptainPage() {
       </header>
 
       <div className="mx-auto max-w-2xl px-3 py-5 sm:px-4 sm:py-6">
-        {unlocked ? <CaptainDashboard /> : <PinGate onSuccess={() => setUnlocked(true)} />}
+        {unlocked ? (
+          <CaptainDashboard />
+        ) : (
+          <PinGate
+            pin={CAPTAIN_PIN}
+            title="Yetki Doğrulama"
+            description="4 haneli kaptan PIN kodunu girin."
+            onSuccess={() => setUnlocked(true)}
+          />
+        )}
       </div>
     </main>
-  );
-}
-
-function PinGate({ onSuccess }: { onSuccess: () => void }) {
-  const [digits, setDigits] = useState(["", "", "", ""]);
-  const [error, setError] = useState(false);
-  const refs = useRef<Array<HTMLInputElement | null>>([]);
-
-  function check(next: string[]) {
-    if (next.join("").length !== 4) return;
-    if (next.join("") === CAPTAIN_PIN) {
-      onSuccess();
-    } else {
-      setError(true);
-      setDigits(["", "", "", ""]);
-      refs.current[0]?.focus();
-    }
-  }
-
-  function setDigit(index: number, raw: string) {
-    const value = raw.replace(/\D/g, "");
-    setError(false);
-    if (!value) {
-      const next = [...digits];
-      next[index] = "";
-      setDigits(next);
-      return;
-    }
-    const next = [...digits];
-    // Support paste of the full code.
-    value.split("").forEach((ch, k) => {
-      if (index + k < 4) next[index + k] = ch;
-    });
-    setDigits(next);
-    const focusAt = Math.min(index + value.length, 3);
-    refs.current[focusAt]?.focus();
-    check(next);
-  }
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        check(digits);
-      }}
-      className="mx-auto mt-6 max-w-sm rounded-3xl border border-border bg-card p-5 text-center shadow-soft sm:p-6"
-    >
-      <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-secondary">
-        <Lock className="h-5 w-5 text-primary" aria-hidden />
-      </div>
-      <h2 className="mt-4 text-base font-semibold text-foreground">Yetki Doğrulama</h2>
-      <p className="mt-1 text-sm text-muted-foreground">4 haneli kaptan PIN kodunu girin.</p>
-
-      <div className="mt-5 flex justify-center gap-2.5">
-        {digits.map((d, i) => (
-          <input
-            key={i}
-            ref={(el) => {
-              refs.current[i] = el;
-            }}
-            value={d}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            autoFocus={i === 0}
-            maxLength={4}
-            aria-label={`PIN ${i + 1}. hane`}
-            onChange={(e) => setDigit(i, e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Backspace" && !digits[i] && i > 0) {
-                refs.current[i - 1]?.focus();
-              }
-            }}
-            className="h-14 w-14 rounded-2xl border border-input bg-background text-center text-2xl font-bold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring/40"
-          />
-        ))}
-      </div>
-
-      {error && <p className="mt-3 text-sm text-destructive">Hatalı PIN kodu.</p>}
-
-      <Button
-        type="submit"
-        className="mt-5 h-12 w-full text-base"
-        disabled={digits.join("").length !== 4}
-      >
-        Giriş Yap
-      </Button>
-    </form>
   );
 }
 
@@ -190,24 +100,7 @@ function CaptainDashboard() {
     };
   }, [queryClient]);
 
-  return (
-    <Tabs defaultValue="score">
-      <TabsList className="grid h-12 w-full grid-cols-2">
-        <TabsTrigger value="score" className="h-10 text-sm">
-          Puan Girişi
-        </TabsTrigger>
-        <TabsTrigger value="teams" className="h-10 text-sm">
-          Takım Yönetimi
-        </TabsTrigger>
-      </TabsList>
-      <TabsContent value="score" className="mt-4">
-        <ScoreForm teams={teams} />
-      </TabsContent>
-      <TabsContent value="teams" className="mt-4">
-        <TeamManager teams={teams} />
-      </TabsContent>
-    </Tabs>
-  );
+  return <ScoreForm teams={teams} />;
 }
 
 type Team = { id: string; name: string; is_active: boolean; total_score: number };
@@ -359,213 +252,4 @@ function ScoreForm({ teams }: { teams: Team[] }) {
                   {p.points}p
                 </span>
               </div>
-              <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-12 w-12 shrink-0"
-                  onClick={() => step(p.key, -1)}
-                  aria-label={`${p.label} kişi sayısını azalt`}
-                >
-                  <Minus className="h-4 w-4" aria-hidden />
-                </Button>
-                <Input
-                  id={p.key}
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  value={String(counts[p.key])}
-                  onChange={(e) =>
-                    setCounts((c) => ({
-                      ...c,
-                      [p.key]: Math.max(Number(e.target.value) || 0, 0),
-                    }))
-                  }
-                  placeholder="0"
-                  aria-label={`${p.label} kişi sayısı`}
-                  className="h-12 min-w-0 text-center text-lg font-bold tabular-nums"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-12 w-12 shrink-0"
-                  onClick={() => step(p.key, 1)}
-                  aria-label={`${p.label} kişi sayısını artır`}
-                >
-                  <Plus className="h-4 w-4" aria-hidden />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="mt-4 rounded-2xl bg-secondary/50 px-3 py-2 text-center text-sm font-bold text-foreground tabular-nums">
-          Günlük toplam: {total} puan
-        </p>
-      </div>
-
-
-      <div className="sticky bottom-0 -mx-3 bg-gradient-to-t from-background via-background to-transparent px-3 pb-safe pt-3 sm:static sm:mx-0 sm:bg-none sm:px-0 sm:pt-0">
-        <Button
-          type="submit"
-          className="h-12 w-full text-base"
-          disabled={saving || !selectedTeam}
-        >
-          {saving ? "Kaydediliyor…" : "Kaydet / Güncelle"}
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-function TeamManager({ teams }: { teams: Team[] }) {
-  const queryClient = useQueryClient();
-  const [newName, setNewName] = useState("");
-  const [resetting, setResetting] = useState(false);
-
-  async function resetSystem() {
-    setResetting(true);
-    const del = await supabase.from("scores").delete().not("id", "is", null);
-    if (del.error) {
-      setResetting(false);
-      toast.error("Sıfırlanamadı: " + del.error.message);
-      return;
-    }
-    await supabase.from("teams").update({ total_score: 0 }).not("id", "is", null);
-    const upd = await supabase
-      .from("contest_settings")
-      .update({ start_date: todayISO() })
-      .eq("id", 1);
-    setResetting(false);
-    if (upd.error) {
-      toast.error("Tarih sıfırlanamadı: " + upd.error.message);
-      return;
-    }
-    toast.success("Sistem sıfırlandı. Yarışma 1. Günden başlıyor.");
-    queryClient.invalidateQueries();
-  }
-
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ["teams"] });
-
-  async function rename(id: string, name: string) {
-    const { error } = await supabase.from("teams").update({ name }).eq("id", id);
-    if (error) toast.error("Güncellenemedi: " + error.message);
-    else refresh();
-  }
-
-  async function toggle(id: string, is_active: boolean) {
-    const { error } = await supabase.from("teams").update({ is_active }).eq("id", id);
-    if (error) toast.error("Güncellenemedi: " + error.message);
-    else {
-      toast.success(is_active ? "Takım aktif edildi." : "Takım pasife alındı.");
-      refresh();
-    }
-  }
-
-  async function addTeam(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newName.trim()) return;
-    const { error } = await supabase.from("teams").insert({ name: newName.trim() });
-    if (error) toast.error("Eklenemedi: " + error.message);
-    else {
-      setNewName("");
-      toast.success("Takım eklendi.");
-      refresh();
-    }
-  }
-
-  return (
-    <div className="space-y-4 pb-safe">
-      <div className="rounded-3xl border border-border bg-card p-4 shadow-soft sm:p-5">
-        <h2 className="mb-3 text-sm font-semibold text-foreground">Takımlar</h2>
-        <ul className="space-y-3">
-          {teams.map((team) => (
-            <li
-              key={team.id}
-              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3"
-            >
-              <Input
-                defaultValue={team.name}
-                onBlur={(e) => {
-                  const v = e.target.value.trim();
-                  if (v && v !== team.name) rename(team.id, v);
-                }}
-                className="h-11 min-w-0 text-base"
-                aria-label={`${team.name} adı`}
-              />
-              <Switch
-                checked={team.is_active}
-                onCheckedChange={(v) => toggle(team.id, v)}
-                aria-label={`${team.name} aktif`}
-                className="shrink-0"
-              />
-            </li>
-          ))}
-        </ul>
-        <p className="mt-3 text-xs text-muted-foreground">
-          Pasif takımlar liderlik tablosunda görünmez. İsim değişikliği alandan çıkınca
-          kaydedilir.
-        </p>
-      </div>
-
-      <form
-        onSubmit={addTeam}
-        className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-3xl border border-border bg-card p-4 shadow-soft sm:p-5"
-      >
-        <Input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="Yeni takım adı"
-          className="h-11 min-w-0 text-base"
-        />
-        <Button type="submit" size="icon" className="h-11 w-11 shrink-0">
-          <Plus className="h-4 w-4" aria-hidden />
-          <span className="sr-only">Takım ekle</span>
-        </Button>
-      </form>
-
-      <div className="rounded-3xl border border-destructive/40 bg-destructive/5 p-4 sm:p-5">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-destructive">
-          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
-          Tehlikeli Alan
-        </h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Tüm günlük puanlar silinir, takım toplamları sıfırlanır ve yarışma 1. Güne
-          döner. Bu işlem geri alınamaz.
-        </p>
-
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              type="button"
-              variant="destructive"
-              className="mt-4 h-12 w-full text-base"
-              disabled={resetting}
-            >
-              <RotateCcw className="mr-2 h-4 w-4" aria-hidden />
-              {resetting ? "Sıfırlanıyor…" : "Sistemi Sıfırla"}
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent className="max-w-[calc(100vw-2rem)] rounded-3xl sm:max-w-md">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Sistemi sıfırla?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Tüm puanlar silinecek ve yarışma 1. Güne dönecek. Bu işlem geri alınamaz.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="gap-2">
-              <AlertDialogCancel className="h-11">Vazgeç</AlertDialogCancel>
-              <AlertDialogAction
-                className="h-11 bg-destructive text-destructive-foreground"
-                onClick={resetSystem}
-              >
-                Evet, sıfırla
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    </div>
-  );
-}
+              <div className="grid grid-cols-[auto_minmax(0,1fr)
