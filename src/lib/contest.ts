@@ -65,4 +65,3 @@ export function formatTR(iso: string): string {
     weekday: "short",
   });
 }
-}
