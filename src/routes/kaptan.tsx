@@ -174,10 +174,14 @@ function ScoreForm({
   const dayIndex = dates.indexOf(date) + 1;
 
   useEffect(() => {
-    const el = dateRefs.current[date];
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-    }
+    const id = requestAnimationFrame(() => {
+      dateRefs.current[date]?.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    });
+    return () => cancelAnimationFrame(id);
   }, [date, selectedTeam]);
 
   useEffect(() => {
