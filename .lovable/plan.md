@@ -42,4 +42,6 @@ Paylaştığın taslağın düzenini uyguluyoruz: gün şeridi, hicri gün başl
 - Yalnızca sunum katmanı: `src/routes/kaptan.tsx` (blok bileşenleri aynı dosyada küçük yerel bileşenler) ve gerekirse `src/lib/contest.ts` içine hicri tarih yardımcı fonksiyonu (`Intl.DateTimeFormat` `islamic-umalqura` takvimi, Europe/Istanbul).
 - Veritabanı şeması, `saveScore` sunucu fonksiyonu, PIN doğrulama ve realtime akışı değişmez.
 - Takım seçimi state'i `CaptainPage` seviyesine taşınır ki header seçici ile form aynı veriyi kullansın.
+- Mevcut derleme hatası da bu çalışmada giderilir: gün şeridindeki `ref` geri çağrımı değer döndürdüğü için tip hatası veriyor (`kaptan.tsx:228`), gövdeli forma çevrilecek.
 - Doğrulama: 390px genişlikte ekran görüntüsü ile kontrol.
+
