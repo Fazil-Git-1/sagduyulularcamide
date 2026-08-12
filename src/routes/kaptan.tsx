@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState, useLayoutEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { teamsQuery, teamScoresQuery } from "@/lib/queries";
 import {
@@ -14,12 +14,9 @@ import {
   type PrayerCounts,
   type PrayerKey,
 } from "@/lib/contest";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { PinGate } from "@/components/pin-gate";
 import { toast } from "sonner";
-import { ArrowLeft, Minus, Plus, Info } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Minus, Plus, Calendar as CalendarIcon } from "lucide-react";
 
 export const Route = createFileRoute("/kaptan")({
   head: () => ({
@@ -30,27 +27,22 @@ export const Route = createFileRoute("/kaptan")({
         content: "Takım kaptanları için günlük puan girişi ekranı.",
       },
       { property: "og:title", content: "Kaptan Girişi — Namaz Yarışması" },
-      {
-        property: "og:description",
-        content: "PIN ile giriş yaparak günlük puanları kaydedin.",
-      },
       { name: "robots", content: "noindex" },
     ],
   }),
   component: CaptainPage,
-  errorComponent: ({ error }) => (
-    <div className="p-8 text-center text-sm text-muted-foreground" role="alert">
-      Sayfa yüklenemedi: {error.message}
-    </div>
-  ),
-  notFoundComponent: () => <div className="p-8 text-center">Bulunamadı.</div>,
 });
 
-// Sadece Yatsı, Sabah ve İşrak namazlarını filtrele ve sırala
-const ACTIVE_PRAYERS = PRAYERS.filter((p) => ["isha", "fajr", "ishraq"].includes(p.key)).sort((a, b) => {
-  const order = ["isha", "fajr", "ishraq"];
-  return order.indexOf(a.key) - order.indexOf(b.key);
-});
+// Sadece Yatsı, Sabah, İşrak ibadetleri filtrelemesi
+const NIGHT_PRAYERS = PRAYERS.filter((p) => p.key === "isha"); // Sadece Yatsı
+const DAY_PRAYERS = PRAYERS.filter((p) => ["fajr", "ishraq"].includes(p.key)); // Sabah ve İşrak
+
+// Miladi Tarih Hesaplayıcıları (Gece Bloğu için bir önceki günü bulur)
+function getPreviousGregorianDate(isoString: string) {
+  const d = new Date(isoString);
+  d.setDate(d.getDate() - 1);
+  return formatTR(d.toISOString().split("T")[0]);
+}
 
 // İslami saat kaydırması: Saat 20:00 ve sonraysa sistemi otomatik ertesi güne atar
 function getIslamicActiveDate() {
@@ -63,38 +55,35 @@ function getIslamicActiveDate() {
 
 function CaptainPage() {
   const [unlocked, setUnlocked] = useState(false);
+  
   return (
-    <main className="min-h-screen overflow-x-hidden bg-background">
-      {/* Senin orijinal, masaüstü uyumlu, tam genişlik Header'ın */}
-      <header className="bg-hero-gradient px-4 py-4 text-primary-foreground sm:px-5 sm:py-6">
-        <div className="mx-auto grid max-w-2xl grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
-          <Link
-            to="/"
-            className="grid h-11 w-11 place-items-center rounded-full opacity-90 transition-opacity active:opacity-60"
-          >
-            <ArrowLeft className="h-5 w-5" aria-hidden />
-            <span className="sr-only">Ana ekrana dön</span>
-          </Link>
-          <div className="min-w-0">
-            <span className="block truncate text-base font-extrabold tracking-tight sm:text-lg">
-              Sağduyulular Camide
-            </span>
-            <h1 className="text-xs opacity-80">Kaptan Paneli</h1>
+    <main className="min-h-screen bg-slate-100 flex justify-center font-sans text-slate-900 sm:py-6">
+      <div className="w-full max-w-md bg-[#f8fafc] min-h-screen sm:min-h-[850px] sm:rounded-[40px] relative flex flex-col shadow-2xl overflow-hidden border border-slate-200">
+        
+        {/* HEADER */}
+        <header className="bg-[#1b5e3a] px-5 py-4 text-white flex justify-between items-center z-10 sm:rounded-t-[40px]">
+          <div className="flex items-center gap-3">
+            <Link to="/" className="p-1 -ml-1 opacity-80 hover:opacity-100">
+              <ArrowLeft className="w-6 h-6" />
+            </Link>
+            <div>
+              <h1 className="text-[17px] font-bold leading-tight">Sağduyulular Camide</h1>
+              <p className="text-[12px] text-emerald-100 opacity-90 font-medium tracking-wide">Kaptan Paneli</p>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Senin orijinal, masaüstünde ortalanan max-w-2xl kapsayıcın */}
-      <div className="mx-auto max-w-2xl px-3 py-5 sm:px-4 sm:py-6">
         {unlocked ? (
           <CaptainDashboard />
         ) : (
-          <PinGate
-            role="captain" // ZodError hatasını kökten çözen role parametresi
-            title="Yetki Doğrulama"
-            description="4 haneli kaptan PIN kodunu girin."
-            onSuccess={() => setUnlocked(true)}
-          />
+          <div className="p-5 mt-10">
+            <PinGate
+              role="captain" // ZodError'u çözen eklenti
+              title="Yetki Doğrulama"
+              description="4 haneli kaptan PIN kodunu girin."
+              onSuccess={() => setUnlocked(true)}
+            />
+          </div>
         )}
       </div>
     </main>
@@ -129,26 +118,23 @@ function ScoreForm({ teams }: { teams: Team[] }) {
   const dateScrollerRef = useRef<HTMLDivElement | null>(null);
   
   const islamicToday = getIslamicActiveDate();
-  const [date, setDate] = useState(islamicToday);
   
   const [teamId, setTeamId] = useState("");
+  const [date, setDate] = useState(islamicToday);
   const [counts, setCounts] = useState<PrayerCounts>(emptyCounts());
   const [saving, setSaving] = useState(false);
 
   const selectedTeam = teamId || activeTeams[0]?.id || "";
   const { data: entries = [] } = useQuery(teamScoresQuery(selectedTeam));
-  const entered = new Map(entries.map((e) => [e.date, e.score]));
   const total = computeScore(counts);
 
-  // Takvimde seçili güne otomatik kaydırma efekti (Mıknatıs)
+  // Mıknatıs efekti: Seçili güne kaydır
   useLayoutEffect(() => {
     const el = dateScrollerRef.current;
     if (!el) return;
     const activeBtn = el.querySelector('[aria-pressed="true"]');
     if (activeBtn) {
       activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    } else {
-      el.scrollLeft = el.scrollWidth;
     }
   }, [date]);
 
@@ -192,98 +178,50 @@ function ScoreForm({ teams }: { teams: Team[] }) {
       toast.error("Kaydedilemedi: " + error.message);
       return;
     }
-    toast.success(`Kaydedildi — ${total} puan.`);
+    toast.success(`${formatTR(date)} için ${total} puan kaydedildi.`);
     queryClient.invalidateQueries({ queryKey: ["teams"] });
     queryClient.invalidateQueries({ queryKey: ["scores", selectedTeam] });
   }
 
-  function step(key: PrayerKey, delta: number) {
+  function step(key: PrayerKey, delta: number, e: React.MouseEvent) {
+    e.preventDefault();
     setCounts((c) => ({ ...c, [key]: Math.max((c[key] || 0) + delta, 0) }));
   }
 
   return (
-    <form onSubmit={save} className="space-y-4">
-      {/* TAKVİM ALANI */}
-      <div className="rounded-3xl border border-border bg-card p-4 shadow-soft">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm">Tarih</Label>
-          {date !== islamicToday && (
-            <button
-              type="button"
-              onClick={() => setDate(islamicToday)}
-              className="text-xs font-bold text-primary transition-opacity hover:opacity-80"
-            >
-              Aktif Güne Dön
-            </button>
-          )}
-        </div>
-
-        {/* CSS ile çirkin scrollbar'lar gizlendi (hide-scrollbar) */}
-        <div
+    <form onSubmit={save} className="flex flex-col h-full flex-1">
+      
+      {/* HIZLI TARİH SEÇİCİ */}
+      <div className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-10 shadow-sm">
+        <div 
           ref={dateScrollerRef}
-          className="[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 mt-4 snap-x snap-mandatory overflow-x-auto px-4 pb-2 scroll-smooth"
+          className="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pb-1"
         >
-          <div className="flex gap-3">
-            {dates.map((d) => {
-              const has = entered.has(d);
-              const isSel = d === date;
-              
-              // Hicri metinden (Örn: "5 Rebiülevvel 1448") sadece gün rakamını "5" olarak çıkarıyoruz
-              const hijriFull = formatHijriTR(d);
-              const hijriDayNumber = hijriFull.split(" ")[0] || Number(d.slice(-2));
-
-              return (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setDate(d)}
-                  aria-pressed={isSel}
-                  aria-label={`${formatTR(d)}${has ? " puan girildi" : " puan girilmedi"}`}
-                  className={`flex h-16 w-14 shrink-0 snap-center flex-col items-center justify-center gap-1.5 rounded-2xl border text-lg font-extrabold tabular-nums transition-all duration-300 ${
-                    isSel
-                      ? "scale-105 border-primary bg-primary text-primary-foreground shadow-md"
-                      : "border-border bg-secondary/40 text-foreground opacity-70 hover:opacity-100"
-                  }`}
-                >
-                  {hijriDayNumber}
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      has
-                        ? isSel
-                          ? "bg-gold"
-                          : "bg-primary"
-                        : isSel
-                          ? "bg-primary-foreground/30"
-                          : "bg-muted-foreground/30"
-                    }`}
-                  />
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mt-4 text-center">
-          <p className="text-lg font-bold text-foreground">{formatHijriTR(date)}</p>
-          <p className="text-xs font-medium text-muted-foreground mt-0.5">
-            ({formatTR(date)})
-            {date === islamicToday ? <span className="text-primary font-bold ml-1">• Aktif Gün</span> : ""}
-          </p>
-        </div>
-
-        {/* İslami Zaman Bilgi Kutusu */}
-        <div className="mt-4 flex items-start gap-3 rounded-xl bg-secondary/50 p-3 border border-border/50">
-          <Info className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
-          <p className="text-xs font-medium leading-relaxed text-muted-foreground">
-            İslami gün akşam ezanıyla başlar. Bu form <strong>dün akşamdan</strong> başlayıp, <strong>bugün işrak vaktine</strong> kadar olan (Yatsı, Sabah, İşrak) ibadetlerini kapsar.
-          </p>
+          {dates.map((d, index) => {
+            const isSel = d === date;
+            return (
+              <button
+                key={d}
+                type="button"
+                aria-pressed={isSel}
+                onClick={() => setDate(d)}
+                className={`shrink-0 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
+                  isSel
+                    ? "bg-[#1b5e3a] text-white border-[#1b5e3a] shadow-md" 
+                    : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                {index + 1}. Gün {d === islamicToday && <span className="ml-1 text-[10px] bg-emerald-500/20 px-1.5 py-0.5 rounded text-emerald-100">AKTİF</span>}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* TAKIM SEÇİMİ */}
-      <div className="rounded-3xl border border-border bg-card p-4 shadow-soft">
-        <Label className="text-sm">Takım</Label>
-        <div className="[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden mt-3 flex overflow-x-auto gap-2 pb-1">
+      <div className="bg-white px-5 py-4 border-b border-slate-200">
+        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Takım</span>
+        <div className="flex gap-2 flex-wrap">
           {activeTeams.map((t) => {
             const isSel = t.id === selectedTeam;
             return (
@@ -291,11 +229,10 @@ function ScoreForm({ teams }: { teams: Team[] }) {
                 key={t.id}
                 type="button"
                 onClick={() => setTeamId(t.id)}
-                aria-pressed={isSel}
-                className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors ${
+                className={`px-4 py-2 rounded-full text-[13px] font-bold transition-all border ${
                   isSel
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-secondary/40 text-foreground hover:bg-secondary/60"
+                    ? "bg-slate-800 text-white border-slate-800 shadow-md"
+                    : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
                 }`}
               >
                 {t.name}
@@ -305,74 +242,102 @@ function ScoreForm({ teams }: { teams: Team[] }) {
         </div>
       </div>
 
-      {/* PUAN GİRİŞ FORMU */}
-      <div className="rounded-3xl border border-border bg-card p-4 shadow-soft">
-        <Label className="text-sm">İbadetler (Kişi Sayısı)</Label>
-        <div className="mt-4 space-y-4">
-          {ACTIVE_PRAYERS.map((p) => (
-            <div key={p.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-border/50 bg-secondary/20 p-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-foreground">{p.label}</span>
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary tabular-nums">
-                  {p.points}p
-                </span>
-              </div>
-              <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-12 w-12 shrink-0 rounded-full bg-background"
-                  onClick={() => step(p.key, -1)}
-                  aria-label={`${p.label} kişi sayısını azalt`}
-                >
-                  <Minus className="h-4 w-4" aria-hidden />
-                </Button>
-                <div className="w-16">
-                  <Input
-                    id={p.key}
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    value={String(counts[p.key])}
-                    onChange={(e) =>
-                      setCounts((c) => ({
-                        ...c,
-                        [p.key]: Math.max(Number(e.target.value) || 0, 0),
-                      }))
-                    }
-                    className="h-12 min-w-0 border-0 bg-transparent text-center text-xl font-bold tabular-nums shadow-none focus-visible:ring-0"
-                    aria-label={`${p.label} kişi sayısı`}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-12 w-12 shrink-0 rounded-full bg-background"
-                  onClick={() => step(p.key, 1)}
-                  aria-label={`${p.label} kişi sayısını artır`}
-                >
-                  <Plus className="h-4 w-4" aria-hidden />
-                </Button>
-              </div>
-            </div>
-          ))}
+      {/* İÇERİK: GECE VE GÜNDÜZ BLOKLARI */}
+      <div className="flex-1 p-4 pb-28 space-y-5 overflow-y-auto">
+        
+        {/* İslami Gün Başlığı */}
+        <div className="text-center mb-6 mt-2">
+          <h2 className="text-2xl font-black text-slate-800">Yarışmanın {dates.indexOf(date) + 1}. Günü</h2>
+          <div className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full mt-2 border border-emerald-100">
+            <CalendarIcon className="w-4 h-4" /> {formatHijriTR(date)}
+          </div>
         </div>
-        <p className="mt-5 rounded-2xl bg-secondary/50 px-3 py-3 text-center text-sm font-bold text-foreground tabular-nums">
-          Günlük toplam: <span className="text-primary text-base">{total}</span> puan
-        </p>
+
+        {/* 1. BLOK: GECE (YATSI) */}
+        <div className="rounded-[24px] overflow-hidden shadow-lg border border-indigo-900/50">
+          <div className="bg-gradient-to-r from-indigo-950 to-slate-900 px-5 py-4 text-indigo-50 border-b border-indigo-800/50">
+            <div className="flex justify-between items-center mb-1">
+              <span className="flex items-center gap-2 text-[15px] font-extrabold tracking-wide text-indigo-100">
+                <Moon className="w-5 h-5" /> Gece Vakti
+              </span>
+            </div>
+            <p className="text-[13px] font-medium text-indigo-300">
+              <span className="font-bold text-indigo-100">{getPreviousGregorianDate(date)}</span> akşam ezanından itibaren
+            </p>
+          </div>
+
+          <div className="bg-indigo-950 px-5 py-4 space-y-3">
+            {NIGHT_PRAYERS.map(prayer => (
+              <div key={prayer.key} className="flex items-center justify-between">
+                <div>
+                  <p className="text-[15px] font-bold text-white">{prayer.label}</p>
+                  <p className="text-[11px] font-semibold text-indigo-300">{prayer.points} puan</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={(e) => step(prayer.key, -1, e)} className="w-10 h-10 rounded-full bg-indigo-900 text-indigo-200 flex items-center justify-center active:bg-indigo-800 border border-indigo-700/50">
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <span className="w-6 text-center text-xl font-bold text-white tabular-nums">{counts[prayer.key] || 0}</span>
+                  <button type="button" onClick={(e) => step(prayer.key, 1, e)} className="w-10 h-10 rounded-full bg-indigo-900 text-indigo-200 flex items-center justify-center active:bg-indigo-800 border border-indigo-700/50">
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 2. BLOK: GÜNDÜZ (SABAH, İŞRAK) */}
+        <div className="rounded-[24px] overflow-hidden shadow-lg border border-sky-200/60">
+          <div className="bg-gradient-to-r from-sky-400 to-sky-500 px-5 py-4 text-white border-b border-sky-300">
+            <div className="flex justify-between items-center mb-1">
+              <span className="flex items-center gap-2 text-[15px] font-extrabold tracking-wide">
+                <Sun className="w-5 h-5" /> Gündüz Vakti
+              </span>
+            </div>
+            <p className="text-[13px] font-medium text-sky-50">
+              <span className="font-bold text-white">{formatTR(date)}</span> işrak vaktine kadar
+            </p>
+          </div>
+
+          <div className="bg-sky-50 px-5 py-4 space-y-3">
+            {DAY_PRAYERS.map((prayer, idx) => (
+              <div key={prayer.key} className={`flex items-center justify-between pb-3 ${idx !== DAY_PRAYERS.length - 1 ? 'border-b border-sky-200/60' : ''}`}>
+                <div>
+                  <p className="text-[15px] font-bold text-sky-950">{prayer.label}</p>
+                  <p className="text-[11px] font-bold text-sky-600">{prayer.points} puan</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={(e) => step(prayer.key, -1, e)} className="w-10 h-10 rounded-full bg-white text-sky-600 flex items-center justify-center active:bg-sky-100 shadow-sm border border-sky-100">
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <span className="w-6 text-center text-xl font-bold text-sky-950 tabular-nums">{counts[prayer.key] || 0}</span>
+                  <button type="button" onClick={(e) => step(prayer.key, 1, e)} className="w-10 h-10 rounded-full bg-white text-sky-600 flex items-center justify-center active:bg-sky-100 shadow-sm border border-sky-100">
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
       </div>
 
-      <div className="sticky bottom-0 -mx-3 bg-gradient-to-t from-background via-background to-transparent px-3 pb-safe pt-3 sm:static sm:mx-0 sm:bg-none sm:px-0 sm:pt-0">
-        <Button
+      {/* ALT BAR (SABİT KAYDETME ALANI) */}
+      <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-safe flex items-center gap-4 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] sm:rounded-b-[40px]">
+        <div className="flex flex-col pl-2">
+          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Günlük Toplam</span>
+          <span className="text-2xl font-black text-[#1b5e3a] leading-none tabular-nums mt-0.5">{total} <span className="text-sm font-bold text-slate-400">puan</span></span>
+        </div>
+        <button 
           type="submit"
-          className="h-14 w-full rounded-2xl text-base font-bold shadow-md"
           disabled={saving || !selectedTeam}
+          className="flex-1 h-14 bg-[#1b5e3a] hover:bg-[#15462b] text-white rounded-2xl font-bold text-[16px] shadow-[0_4px_15px_rgba(27,94,58,0.3)] active:scale-95 transition-all disabled:opacity-50"
         >
-          {saving ? "Kaydediliyor…" : "Puanları Kaydet"}
-        </Button>
+          {saving ? "Kaydediliyor..." : "Puanları Kaydet"}
+        </button>
       </div>
+
     </form>
   );
 }
