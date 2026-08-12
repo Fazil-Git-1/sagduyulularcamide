@@ -1,22 +1,34 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, useLayoutEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { teamsQuery, teamScoresQuery } from "@/lib/queries";
+import { useServerFn } from "@tanstack/react-start";
+import { saveScore } from "@/lib/contest.functions";
 import {
   PRAYERS,
   computeScore,
   emptyCounts,
-  formatHijriTR,
+  formatLongTR,
   formatTR,
+  hijriLabel,
+  prevISO,
   selectableDates,
   todayISO,
   type PrayerCounts,
   type PrayerKey,
 } from "@/lib/contest";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PinGate } from "@/components/pin-gate";
 import { toast } from "sonner";
-import { ArrowLeft, Moon, Sun, Minus, Plus, Calendar as CalendarIcon } from "lucide-react";
+import { ArrowLeft, CalendarDays, Minus, Moon, Plus, Sun } from "lucide-react";
 
 export const Route = createFileRoute("/kaptan")({
   head: () => ({
@@ -27,72 +39,75 @@ export const Route = createFileRoute("/kaptan")({
         content: "Takım kaptanları için günlük puan girişi ekranı.",
       },
       { property: "og:title", content: "Kaptan Girişi — Namaz Yarışması" },
+      {
+        property: "og:description",
+        content: "PIN ile giriş yaparak günlük puanları kaydedin.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
   component: CaptainPage,
+  errorComponent: ({ error }) => (
+    <div className="p-8 text-center text-sm text-muted-foreground" role="alert">
+      Sayfa yüklenemedi: {error.message}
+    </div>
+  ),
+  notFoundComponent: () => <div className="p-8 text-center">Bulunamadı.</div>,
 });
 
-// Sadece Yatsı, Sabah, İşrak ibadetleri filtrelemesi
-const NIGHT_PRAYERS = PRAYERS.filter((p) => p.key === "isha"); // Sadece Yatsı
-const DAY_PRAYERS = PRAYERS.filter((p) => ["fajr", "ishraq"].includes(p.key)); // Sabah ve İşrak
+type Team = { id: string; name: string; is_active: boolean; total_score: number };
 
-// Miladi Tarih Hesaplayıcıları (Gece Bloğu için bir önceki günü bulur)
-function getPreviousGregorianDate(isoString: string) {
-  const d = new Date(isoString);
-  d.setDate(d.getDate() - 1);
-  return formatTR(d.toISOString().split("T")[0]);
-}
-
-// İslami saat kaydırması: Saat 20:00 ve sonraysa sistemi otomatik ertesi güne atar
-function getIslamicActiveDate() {
-  const now = new Date();
-  if (now.getHours() >= 20) {
-    now.setDate(now.getDate() + 1);
-  }
-  return now.toISOString().split("T")[0];
-}
-
-function CaptainPage() {
-  const [unlocked, setUnlocked] = useState(false);
-  
+function PageHeader({ children }: { children?: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-slate-100 flex justify-center font-sans text-slate-900 sm:py-6">
-      <div className="w-full max-w-md bg-[#f8fafc] min-h-screen sm:min-h-[850px] sm:rounded-[40px] relative flex flex-col shadow-2xl overflow-hidden border border-slate-200">
-        
-        {/* HEADER */}
-        <header className="bg-[#1b5e3a] px-5 py-4 text-white flex justify-between items-center z-10 sm:rounded-t-[40px]">
-          <div className="flex items-center gap-3">
-            <Link to="/" className="p-1 -ml-1 opacity-80 hover:opacity-100">
-              <ArrowLeft className="w-6 h-6" />
-            </Link>
-            <div>
-              <h1 className="text-[17px] font-bold leading-tight">Sağduyulular Camide</h1>
-              <p className="text-[12px] text-emerald-100 opacity-90 font-medium tracking-wide">Kaptan Paneli</p>
-            </div>
-          </div>
-        </header>
-
-        {unlocked ? (
-          <CaptainDashboard />
-        ) : (
-          <div className="p-5 mt-10">
-            <PinGate
-              role="captain" // ZodError'u çözen eklenti
-              title="Yetki Doğrulama"
-              description="4 haneli kaptan PIN kodunu girin."
-              onSuccess={() => setUnlocked(true)}
-            />
-          </div>
-        )}
+    <header className="sticky top-0 z-20 bg-hero-gradient px-4 py-3 text-primary-foreground sm:px-5 sm:py-4">
+      <div className="mx-auto flex max-w-2xl items-center gap-3">
+        <Link
+          to="/"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full opacity-90 transition-opacity active:opacity-60"
+        >
+          <ArrowLeft className="h-5 w-5" aria-hidden />
+          <span className="sr-only">Ana ekrana dön</span>
+        </Link>
+        <div className="min-w-0 flex-1">
+          <span className="block truncate text-base font-extrabold tracking-tight sm:text-lg">
+            Sağduyulular Camide
+          </span>
+          <h1 className="text-xs opacity-80">Kaptan Paneli</h1>
+        </div>
+        {children}
       </div>
-    </main>
+    </header>
   );
 }
 
-function CaptainDashboard() {
+function CaptainPage() {
+  const [pin, setPin] = useState<string | null>(null);
+
+  if (pin === null) {
+    return (
+      <main className="min-h-screen overflow-x-hidden bg-background">
+        <PageHeader />
+        <div className="mx-auto max-w-2xl px-3 py-5 sm:px-4 sm:py-6">
+          <PinGate
+            role="captain"
+            title="Yetki Doğrulama"
+            description="4 haneli kaptan PIN kodunu girin."
+            onSuccess={setPin}
+          />
+        </div>
+      </main>
+    );
+  }
+
+  return <CaptainDashboard pin={pin} />;
+}
+
+function CaptainDashboard({ pin }: { pin: string }) {
   const queryClient = useQueryClient();
   const { data: teams } = useSuspenseQuery(teamsQuery);
+  const activeTeams = teams.filter((t) => t.is_active);
+  const [teamId, setTeamId] = useState("");
+  const selectedTeam = teamId || activeTeams[0]?.id || "";
 
   useEffect(() => {
     const channel = supabase
@@ -106,37 +121,68 @@ function CaptainDashboard() {
     };
   }, [queryClient]);
 
-  return <ScoreForm teams={teams} />;
+  return (
+    <main className="min-h-screen overflow-x-hidden bg-background">
+      <PageHeader>
+        <Select value={selectedTeam} onValueChange={setTeamId}>
+          <SelectTrigger
+            aria-label="Takım seç"
+            className="h-10 w-[9.5rem] shrink-0 rounded-full border-primary-foreground/25 bg-primary-foreground/10 text-sm font-semibold text-primary-foreground"
+          >
+            <SelectValue placeholder="Takım" />
+          </SelectTrigger>
+          <SelectContent>
+            {activeTeams.map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                {t.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </PageHeader>
+      <ScoreForm teams={activeTeams} selectedTeam={selectedTeam} pin={pin} />
+    </main>
+  );
 }
 
-type Team = { id: string; name: string; is_active: boolean; total_score: number };
-
-function ScoreForm({ teams }: { teams: Team[] }) {
+function ScoreForm({
+  teams,
+  selectedTeam,
+  pin,
+}: {
+  teams: Team[];
+  selectedTeam: string;
+  pin: string;
+}) {
   const queryClient = useQueryClient();
-  const activeTeams = teams.filter((t) => t.is_active);
-  const dates = [...selectableDates()].reverse();
-  const dateScrollerRef = useRef<HTMLDivElement | null>(null);
-  
-  const islamicToday = getIslamicActiveDate();
-  
-  const [teamId, setTeamId] = useState("");
-  const [date, setDate] = useState(islamicToday);
+  const submitScore = useServerFn(saveScore);
+
+  // Yarışmanın başlangıç tarihi (bu tarihten öncesi listelenmez).
+  const START_DATE = "2026-08-09";
+
+  const dates = [...selectableDates()].filter((d) => d >= START_DATE).reverse();
+
+  const dateRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  const [date, setDate] = useState(todayISO());
   const [counts, setCounts] = useState<PrayerCounts>(emptyCounts());
   const [saving, setSaving] = useState(false);
 
-  const selectedTeam = teamId || activeTeams[0]?.id || "";
   const { data: entries = [] } = useQuery(teamScoresQuery(selectedTeam));
+  const entered = new Map(entries.map((e) => [e.date, e.score]));
   const total = computeScore(counts);
+  const dayIndex = dates.indexOf(date) + 1;
 
-  // Mıknatıs efekti: Seçili güne kaydır
-  useLayoutEffect(() => {
-    const el = dateScrollerRef.current;
-    if (!el) return;
-    const activeBtn = el.querySelector('[aria-pressed="true"]');
-    if (activeBtn) {
-      activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
-  }, [date]);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      dateRefs.current[date]?.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [date, selectedTeam]);
 
   useEffect(() => {
     if (!selectedTeam) return;
@@ -168,176 +214,216 @@ function ScoreForm({ teams }: { teams: Team[] }) {
     e.preventDefault();
     if (!selectedTeam) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("scores")
-      .upsert({ team_id: selectedTeam, date, ...counts, score: total }, {
-        onConflict: "team_id,date",
-      });
-    setSaving(false);
-    if (error) {
-      toast.error("Kaydedilemedi: " + error.message);
+    try {
+      await submitScore({ data: { pin, team_id: selectedTeam, date, ...counts } });
+    } catch (err) {
+      setSaving(false);
+      toast.error("Kaydedilemedi: " + (err as Error).message);
       return;
     }
-    toast.success(`${formatTR(date)} için ${total} puan kaydedildi.`);
+    setSaving(false);
+    toast.success(`Kaydedildi — ${total} puan.`);
     queryClient.invalidateQueries({ queryKey: ["teams"] });
     queryClient.invalidateQueries({ queryKey: ["scores", selectedTeam] });
   }
 
-  function step(key: PrayerKey, delta: number, e: React.MouseEvent) {
-    e.preventDefault();
+  function step(key: PrayerKey, delta: number) {
     setCounts((c) => ({ ...c, [key]: Math.max((c[key] || 0) + delta, 0) }));
   }
 
+  const nightPrayers = PRAYERS.filter((p) => p.phase === "night");
+  const dayPrayers = PRAYERS.filter((p) => p.phase === "day");
+
   return (
-    <form onSubmit={save} className="flex flex-col h-full flex-1">
-      
-      {/* HIZLI TARİH SEÇİCİ */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-10 shadow-sm">
-        <div 
-          ref={dateScrollerRef}
-          className="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pb-1"
-        >
-          {dates.map((d, index) => {
+    <form onSubmit={save} className="mx-auto max-w-2xl">
+      {/* Gün şeridi */}
+      <div className="sticky top-[4.25rem] z-10 border-b border-border bg-card/95 px-3 py-2 backdrop-blur sm:px-4">
+        <div className="[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex gap-2 overflow-x-auto pb-1">
+          {dates.map((d, i) => {
             const isSel = d === date;
+            const isToday = d === todayISO();
+            const has = entered.has(d);
             return (
               <button
                 key={d}
+                ref={(el) => {
+                  dateRefs.current[d] = el;
+                }}
                 type="button"
-                aria-pressed={isSel}
                 onClick={() => setDate(d)}
-                className={`shrink-0 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
+                aria-pressed={isSel}
+                aria-label={`${i + 1}. Gün — ${formatTR(d)}${has ? ", puan girildi" : ""}`}
+                className={`flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3.5 text-sm font-bold transition-colors ${
                   isSel
-                    ? "bg-[#1b5e3a] text-white border-[#1b5e3a] shadow-md" 
-                    : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                    ? "border-primary bg-primary text-primary-foreground shadow-soft"
+                    : "border-border bg-card text-muted-foreground active:bg-secondary/60"
                 }`}
               >
-                {index + 1}. Gün {d === islamicToday && <span className="ml-1 text-[10px] bg-emerald-500/20 px-1.5 py-0.5 rounded text-emerald-100">AKTİF</span>}
+                <span className="tabular-nums">{i + 1}. Gün</span>
+                {isToday && (
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold tracking-wide ${
+                      isSel ? "bg-primary-foreground/20" : "bg-secondary text-primary"
+                    }`}
+                  >
+                    BUGÜN
+                  </span>
+                )}
+                {has && !isToday && (
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      isSel ? "bg-primary-foreground" : "bg-primary"
+                    }`}
+                  />
+                )}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* TAKIM SEÇİMİ */}
-      <div className="bg-white px-5 py-4 border-b border-slate-200">
-        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Takım</span>
-        <div className="flex gap-2 flex-wrap">
-          {activeTeams.map((t) => {
-            const isSel = t.id === selectedTeam;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTeamId(t.id)}
-                className={`px-4 py-2 rounded-full text-[13px] font-bold transition-all border ${
-                  isSel
-                    ? "bg-slate-800 text-white border-slate-800 shadow-md"
-                    : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
-                }`}
-              >
-                {t.name}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* İÇERİK: GECE VE GÜNDÜZ BLOKLARI */}
-      <div className="flex-1 p-4 pb-28 space-y-5 overflow-y-auto">
-        
-        {/* İslami Gün Başlığı */}
-        <div className="text-center mb-6 mt-2">
-          <h2 className="text-2xl font-black text-slate-800">Yarışmanın {dates.indexOf(date) + 1}. Günü</h2>
-          <div className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full mt-2 border border-emerald-100">
-            <CalendarIcon className="w-4 h-4" /> {formatHijriTR(date)}
+      <div className="space-y-4 px-3 pb-40 pt-5 sm:px-4">
+        {/* Hicri gün başlığı */}
+        <div className="text-center">
+          <h2 className="text-2xl font-black tracking-tight text-foreground">
+            {dayIndex}. Gün Puanları
+          </h2>
+          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1 text-sm font-bold text-primary">
+            <CalendarDays className="h-4 w-4" aria-hidden />
+            {hijriLabel(date)}
           </div>
+          {!selectedTeam && (
+            <p className="mt-2 text-xs text-muted-foreground">Önce yukarıdan takım seçin.</p>
+          )}
         </div>
 
-        {/* 1. BLOK: GECE (YATSI) */}
-        <div className="rounded-[24px] overflow-hidden shadow-lg border border-indigo-900/50">
-          <div className="bg-gradient-to-r from-indigo-950 to-slate-900 px-5 py-4 text-indigo-50 border-b border-indigo-800/50">
-            <div className="flex justify-between items-center mb-1">
-              <span className="flex items-center gap-2 text-[15px] font-extrabold tracking-wide text-indigo-100">
-                <Moon className="w-5 h-5" /> Gece Vakti
-              </span>
-            </div>
-            <p className="text-[13px] font-medium text-indigo-300">
-              <span className="font-bold text-indigo-100">{getPreviousGregorianDate(date)}</span> akşam ezanından itibaren
+        {/* Gece bloğu */}
+        <section className="overflow-hidden rounded-3xl border border-primary/30 shadow-soft">
+          <div className="bg-hero-gradient px-5 py-4 text-primary-foreground">
+            <span className="flex items-center gap-2 text-[15px] font-extrabold tracking-wide">
+              <Moon className="h-5 w-5" aria-hidden /> Gece Vakti
+            </span>
+            <p className="mt-1 text-[13px] font-medium opacity-85">
+              <span className="font-bold opacity-100">{formatLongTR(prevISO(date))}</span> akşam
+              ezanından itibaren
             </p>
           </div>
-
-          <div className="bg-indigo-950 px-5 py-4 space-y-3">
-            {NIGHT_PRAYERS.map(prayer => (
-              <div key={prayer.key} className="flex items-center justify-between">
-                <div>
-                  <p className="text-[15px] font-bold text-white">{prayer.label}</p>
-                  <p className="text-[11px] font-semibold text-indigo-300">{prayer.points} puan</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button type="button" onClick={(e) => step(prayer.key, -1, e)} className="w-10 h-10 rounded-full bg-indigo-900 text-indigo-200 flex items-center justify-center active:bg-indigo-800 border border-indigo-700/50">
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="w-6 text-center text-xl font-bold text-white tabular-nums">{counts[prayer.key] || 0}</span>
-                  <button type="button" onClick={(e) => step(prayer.key, 1, e)} className="w-10 h-10 rounded-full bg-indigo-900 text-indigo-200 flex items-center justify-center active:bg-indigo-800 border border-indigo-700/50">
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+          <div className="space-y-3 bg-primary/95 px-5 py-4">
+            {nightPrayers.map((p) => (
+              <PrayerRow
+                key={p.key}
+                label={p.label}
+                points={p.points}
+                value={counts[p.key]}
+                onStep={(delta) => step(p.key, delta)}
+                tone="night"
+              />
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* 2. BLOK: GÜNDÜZ (SABAH, İŞRAK) */}
-        <div className="rounded-[24px] overflow-hidden shadow-lg border border-sky-200/60">
-          <div className="bg-gradient-to-r from-sky-400 to-sky-500 px-5 py-4 text-white border-b border-sky-300">
-            <div className="flex justify-between items-center mb-1">
-              <span className="flex items-center gap-2 text-[15px] font-extrabold tracking-wide">
-                <Sun className="w-5 h-5" /> Gündüz Vakti
-              </span>
-            </div>
-            <p className="text-[13px] font-medium text-sky-50">
-              <span className="font-bold text-white">{formatTR(date)}</span> işrak vaktine kadar
+        {/* Gündüz bloğu */}
+        <section className="overflow-hidden rounded-3xl border border-accent/40 shadow-soft">
+          <div className="bg-accent px-5 py-4 text-accent-foreground">
+            <span className="flex items-center gap-2 text-[15px] font-extrabold tracking-wide">
+              <Sun className="h-5 w-5" aria-hidden /> Gündüz Vakti
+            </span>
+            <p className="mt-1 text-[13px] font-medium opacity-85">
+              <span className="font-bold opacity-100">{formatLongTR(date)}</span> ikindi ezanına
+              kadar
             </p>
           </div>
-
-          <div className="bg-sky-50 px-5 py-4 space-y-3">
-            {DAY_PRAYERS.map((prayer, idx) => (
-              <div key={prayer.key} className={`flex items-center justify-between pb-3 ${idx !== DAY_PRAYERS.length - 1 ? 'border-b border-sky-200/60' : ''}`}>
-                <div>
-                  <p className="text-[15px] font-bold text-sky-950">{prayer.label}</p>
-                  <p className="text-[11px] font-bold text-sky-600">{prayer.points} puan</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button type="button" onClick={(e) => step(prayer.key, -1, e)} className="w-10 h-10 rounded-full bg-white text-sky-600 flex items-center justify-center active:bg-sky-100 shadow-sm border border-sky-100">
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="w-6 text-center text-xl font-bold text-sky-950 tabular-nums">{counts[prayer.key] || 0}</span>
-                  <button type="button" onClick={(e) => step(prayer.key, 1, e)} className="w-10 h-10 rounded-full bg-white text-sky-600 flex items-center justify-center active:bg-sky-100 shadow-sm border border-sky-100">
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+          <div className="space-y-3 bg-accent/15 px-5 py-4">
+            {dayPrayers.map((p) => (
+              <PrayerRow
+                key={p.key}
+                label={p.label}
+                points={p.points}
+                value={counts[p.key]}
+                onStep={(delta) => step(p.key, delta)}
+                tone="day"
+              />
             ))}
           </div>
-        </div>
+        </section>
 
+        {teams.length === 0 && (
+          <p className="text-center text-sm text-muted-foreground">Aktif takım bulunamadı.</p>
+        )}
       </div>
 
-      {/* ALT BAR (SABİT KAYDETME ALANI) */}
-      <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-safe flex items-center gap-4 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] sm:rounded-b-[40px]">
-        <div className="flex flex-col pl-2">
-          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Günlük Toplam</span>
-          <span className="text-2xl font-black text-[#1b5e3a] leading-none tabular-nums mt-0.5">{total} <span className="text-sm font-bold text-slate-400">puan</span></span>
+      {/* Sabit alt bar */}
+      <div className="pb-safe fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card px-4 py-3 shadow-[0_-10px_20px_hsl(0_0%_0%/0.06)]">
+        <div className="mx-auto flex max-w-2xl items-center gap-4">
+          <div className="flex min-w-0 flex-col">
+            <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
+              Günlük Toplam
+            </span>
+            <span className="mt-0.5 text-2xl font-black leading-none text-primary tabular-nums">
+              {total}{" "}
+              <span className="text-sm font-bold text-muted-foreground">puan</span>
+            </span>
+          </div>
+          <Button
+            type="submit"
+            disabled={saving || !selectedTeam}
+            className="h-14 flex-1 rounded-2xl text-base font-bold"
+          >
+            {saving ? "Kaydediliyor…" : "Puanları Kaydet"}
+          </Button>
         </div>
-        <button 
-          type="submit"
-          disabled={saving || !selectedTeam}
-          className="flex-1 h-14 bg-[#1b5e3a] hover:bg-[#15462b] text-white rounded-2xl font-bold text-[16px] shadow-[0_4px_15px_rgba(27,94,58,0.3)] active:scale-95 transition-all disabled:opacity-50"
+      </div>
+    </form>
+  );
+}
+
+function PrayerRow({
+  label,
+  points,
+  value,
+  onStep,
+  tone,
+}: {
+  label: string;
+  points: number;
+  value: number;
+  onStep: (delta: number) => void;
+  tone: "night" | "day";
+}) {
+  const isNight = tone === "night";
+  const textMain = isNight ? "text-primary-foreground" : "text-foreground";
+  const textSub = isNight ? "text-primary-foreground/70" : "text-primary";
+  const btn = isNight
+    ? "border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground active:bg-primary-foreground/20"
+    : "border-border bg-card text-primary active:bg-secondary";
+
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className={`truncate text-[15px] font-bold ${textMain}`}>{label}</p>
+        <p className={`text-[11px] font-semibold ${textSub}`}>{points} puan</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-3">
+        <button
+          type="button"
+          onClick={() => onStep(-1)}
+          aria-label={`${label} azalt`}
+          className={`grid h-11 w-11 place-items-center rounded-full border transition-colors ${btn}`}
         >
-          {saving ? "Kaydediliyor..." : "Puanları Kaydet"}
+          <Minus className="h-4 w-4" aria-hidden />
+        </button>
+        <span className={`w-7 text-center text-xl font-bold tabular-nums ${textMain}`}>
+          {value}
+        </span>
+        <button
+          type="button"
+          onClick={() => onStep(1)}
+          aria-label={`${label} artır`}
+          className={`grid h-11 w-11 place-items-center rounded-full border transition-colors ${btn}`}
+        >
+          <Plus className="h-4 w-4" aria-hidden />
         </button>
       </div>
-
-    </form>
+    </div>
   );
 }
