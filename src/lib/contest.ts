@@ -2,10 +2,11 @@ export const CONTEST_DAYS = 30;
 // PIN kodları yalnızca sunucuda tutulur (src/lib/pins.server.ts).
 
 export const PRAYERS = [
-  { key: "fajr_count", label: "Sabah namazı", points: 5 },
-  { key: "isha_count", label: "Yatsı namazı", points: 3 },
-  { key: "ishraq_count", label: "İşrak ibadeti", points: 3 },
+  { key: "isha_count", label: "Yatsı namazı", points: 3, phase: "night" },
+  { key: "fajr_count", label: "Sabah namazı", points: 5, phase: "day" },
+  { key: "ishraq_count", label: "İşrak ibadeti", points: 3, phase: "day" },
 ] as const;
+
 
 export type PrayerKey = (typeof PRAYERS)[number]["key"];
 
