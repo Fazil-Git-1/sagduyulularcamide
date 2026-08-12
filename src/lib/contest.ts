@@ -64,3 +64,29 @@ export function formatTR(iso: string): string {
     weekday: "short",
   });
 }
+
+/** Bir önceki günün ISO tarihi. */
+export function prevISO(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() - 1);
+  return toISODate(d);
+}
+
+/** "16 Ağustos Çarşamba" biçiminde uzun Türkçe tarih. */
+export function formatLongTR(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  return d.toLocaleDateString("tr-TR", { day: "numeric", month: "long", weekday: "long" });
+}
+
+/** Hicri tarih etiketi, ör. "5 Rebiülevvel". */
+export function hijriLabel(iso: string): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  try {
+    return new Intl.DateTimeFormat("tr-TR-u-ca-islamic-umalqura", {
+      day: "numeric",
+      month: "long",
+    }).format(d);
+  } catch {
+    return "";
+  }
+}
