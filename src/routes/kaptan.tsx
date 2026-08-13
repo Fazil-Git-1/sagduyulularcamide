@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { teamsQuery, teamScoresQuery } from "@/lib/queries";
+import { teamsQuery, teamScoresQuery, settingsQuery } from "@/lib/queries";
 import { useServerFn } from "@tanstack/react-start";
 import { saveScore } from "@/lib/contest.functions";
 import {
@@ -115,6 +115,13 @@ function CaptainDashboard({ pin }: { pin: string }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "teams" }, () => {
         queryClient.invalidateQueries({ queryKey: ["teams"] });
       })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "contest_settings" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["contest_settings"] });
+        },
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -157,10 +164,10 @@ function ScoreForm({
   const queryClient = useQueryClient();
   const submitScore = useServerFn(saveScore);
 
-  // Yarışmanın başlangıç tarihi (bu tarihten öncesi listelenmez).
-  const START_DATE = "2026-08-09";
+  // Yarışmanın gerçek başlangıç tarihi (admin panelinden sıfırlanabilir).
+  const { data: settings } = useSuspenseQuery(settingsQuery);
 
-  const dates = [...selectableDates()].filter((d) => d >= START_DATE).reverse();
+  const dates = [...selectableDates()].filter((d) => d >= settings.start_date).reverse();
 
   const dateRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
