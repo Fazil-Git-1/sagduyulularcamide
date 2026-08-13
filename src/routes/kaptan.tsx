@@ -107,7 +107,7 @@ function CaptainDashboard({ pin }: { pin: string }) {
   const { data: teams } = useSuspenseQuery(teamsQuery);
   const activeTeams = teams.filter((t) => t.is_active);
   const [teamId, setTeamId] = useState("");
-  const selectedTeam = teamId || activeTeams[0]?.id || "";
+  const selectedTeam = teamId;
 
   useEffect(() => {
     const channel = supabase
@@ -129,7 +129,7 @@ function CaptainDashboard({ pin }: { pin: string }) {
             aria-label="Takım seç"
             className="h-10 w-[9.5rem] shrink-0 rounded-full border-primary-foreground/25 bg-primary-foreground/10 text-sm font-semibold text-primary-foreground"
           >
-            <SelectValue placeholder="Takım" />
+            <SelectValue placeholder="Takım Seç" />
           </SelectTrigger>
           <SelectContent>
             {activeTeams.map((t) => (
