@@ -52,8 +52,8 @@ function igdirSunsetUTC(isoDate: string): Date {
   const jd = noonUTC / 86400000 + 2440587.5;
   const n = jd - 2451545.0 + 0.0008;
 
-  const lw = -IGDIR_LON; // formülde batı pozitif kabul edilir
-  const jStar = n - lw / 360;
+  // Doğu boylamları için ortalama güneş öğleni UTC'de daha erken gerçekleşir.
+  const jStar = n - IGDIR_LON / 360;
 
   const meanAnomaly = (357.5291 + 0.98560028 * jStar) % 360;
   const mRad = toRad(meanAnomaly);
@@ -179,13 +179,20 @@ function hijriFromGregorian(y: number, m: number, d: number): { day: number; mon
   return { day, month };
 }
 
+// Aritmetik/ICU hicri hesaplamaları, ay başlangıcının Diyanet tarafından resmi
+// olarak duyurulan takvimiyle bazen 1 gün farklılaşabilir (hesaplanmış takvim ile
+// gerçek ay gözlemine dayalı resmi takvim arasındaki bilinen fark). Bu durumda,
+// gerçek/duyurulan takvimle eşleşmesi için burada düzeltme yapılır. İleride
+// tekrar sapma olursa (örn. yeni bir ayın girişinde), bu sayıyı güncelleyin.
+const HIJRI_DAY_OFFSET = 1;
+
 /** Hicri tarih etiketi, ör. "5 Rebiülevvel". Mobil ICU eksikliklerine karşı dayanıklı. */
 export function hijriLabel(iso: string): string {
   const [ys, ms, ds] = iso.split("-");
   const y = Number(ys);
   const m = Number(ms);
   const d = Number(ds);
-  const utc = new Date(Date.UTC(y, m - 1, d, 12));
+  const utc = new Date(Date.UTC(y, m - 1, d, 12) + HIJRI_DAY_OFFSET * 86400000);
 
   for (const calendar of ["islamic-umalqura", "islamic-civil", "islamic"]) {
     try {
@@ -206,6 +213,6 @@ export function hijriLabel(iso: string): string {
     }
   }
 
-  const fb = hijriFromGregorian(y, m, d);
+  const fb = hijriFromGregorian(utc.getUTCFullYear(), utc.getUTCMonth() + 1, utc.getUTCDate());
   return `${fb.day} ${HIJRI_MONTHS_TR[Math.min(Math.max(fb.month, 1), 12) - 1]}`;
 }
