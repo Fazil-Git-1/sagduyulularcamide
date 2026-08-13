@@ -88,7 +88,7 @@ function Leaderboard() {
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-background">
-      <header className="bg-hero-gradient px-5 pb-12 pt-10 text-primary-foreground sm:pb-16 sm:pt-14">
+      <header className="bg-hero-gradient px-5 pb-12 pt-10 text-hero-foreground sm:pb-16 sm:pt-14">
         <div className="mx-auto max-w-xl">
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-gold/80">
             30 Günlük Namaz Yarışması
@@ -107,7 +107,7 @@ function Leaderboard() {
                 %{pct} · {remaining} gün kaldı
               </span>
             </div>
-            <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-primary-foreground/15">
+            <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-hero-foreground/15">
               <div
                 className="h-full rounded-full bg-gold transition-all duration-1000 ease-out"
                 style={{ width: `${pct}%` }}

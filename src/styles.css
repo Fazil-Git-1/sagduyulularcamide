@@ -161,6 +161,7 @@
 @theme inline {
   --color-gold: var(--gold);
   --color-gold-foreground: var(--gold-foreground);
+  --color-hero-foreground: oklch(0.962 0.014 92);
   --color-silver: var(--silver);
   --color-bronze: var(--bronze);
   --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
