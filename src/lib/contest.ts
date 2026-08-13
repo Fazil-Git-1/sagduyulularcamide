@@ -184,7 +184,7 @@ function hijriFromGregorian(y: number, m: number, d: number): { day: number; mon
 // gerçek ay gözlemine dayalı resmi takvim arasındaki bilinen fark). Bu durumda,
 // gerçek/duyurulan takvimle eşleşmesi için burada düzeltme yapılır. İleride
 // tekrar sapma olursa (örn. yeni bir ayın girişinde), bu sayıyı güncelleyin.
-const HIJRI_DAY_OFFSET = 1;
+const HIJRI_DAY_OFFSET = 0;
 
 /** Hicri tarih etiketi, ör. "5 Rebiülevvel". Mobil ICU eksikliklerine karşı dayanıklı. */
 export function hijriLabel(iso: string): string {
