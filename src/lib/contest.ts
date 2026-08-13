@@ -32,8 +32,69 @@ export function toISODate(d: Date): string {
   }).format(d);
 }
 
+// --- Iğdır akşam ezanı (gün batımı) hesabı -------------------------------
+// Yarışma günü, takvim gece yarısında değil, Iğdır'da güneş battığı anda
+// (yaklaşık akşam ezanı vakti) bir sonraki güne geçer. Bu, astronomik bir
+// yaklaşımdır (NOAA / "sunrise equation"); gerçek Diyanet vaktinden birkaç
+// dakika sapabilir ama dış servise ihtiyaç duymaz.
+
+const IGDIR_LAT = 39.9237; // derece, kuzey
+const IGDIR_LON = 44.045; // derece, doğu (pozitif)
+
+const toRad = (v: number) => (v * Math.PI) / 180;
+const toDeg = (v: number) => (v * 180) / Math.PI;
+
+/** Verilen Gregorian takvim gününde Iğdır için güneşin battığı an (UTC Date). */
+function igdirSunsetUTC(isoDate: string): Date {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  // O günün öğlenini referans alarak Julian tarihini hesapla.
+  const noonUTC = Date.UTC(y, m - 1, d, 12, 0, 0);
+  const jd = noonUTC / 86400000 + 2440587.5;
+  const n = jd - 2451545.0 + 0.0008;
+
+  const lw = -IGDIR_LON; // formülde batı pozitif kabul edilir
+  const jStar = n - lw / 360;
+
+  const meanAnomaly = (357.5291 + 0.98560028 * jStar) % 360;
+  const mRad = toRad(meanAnomaly);
+  const centerEq =
+    1.9148 * Math.sin(mRad) + 0.02 * Math.sin(2 * mRad) + 0.0003 * Math.sin(3 * mRad);
+  const eclipticLon = (meanAnomaly + centerEq + 180 + 102.9372) % 360;
+  const lonRad = toRad(eclipticLon);
+
+  const jTransit =
+    2451545.0 + jStar + 0.0053 * Math.sin(mRad) - 0.0069 * Math.sin(2 * lonRad);
+
+  const sinDecl = Math.sin(lonRad) * Math.sin(toRad(23.44));
+  const decl = Math.asin(sinDecl);
+
+  const phi = toRad(IGDIR_LAT);
+  const cosHourAngle =
+    (Math.sin(toRad(-0.833)) - Math.sin(phi) * Math.sin(decl)) / (Math.cos(phi) * Math.cos(decl));
+  const clamped = Math.min(1, Math.max(-1, cosHourAngle));
+  const hourAngle = toDeg(Math.acos(clamped));
+
+  const jSet = jTransit + hourAngle / 360;
+
+  return new Date((jSet - 2440587.5) * 86400000);
+}
+
+/**
+ * Yarışma açısından "bugün"ün ISO tarihi. Iğdır'da güneş battıktan sonra
+ * (akşam ezanı vakti) bir sonraki takvim gününe geçer; öncesinde normal
+ * Istanbul takvim günüdür.
+ */
 export function todayISO(): string {
-  return toISODate(new Date());
+  const now = new Date();
+  const calendarISO = toISODate(now);
+  const sunset = igdirSunsetUTC(calendarISO);
+
+  if (now.getTime() >= sunset.getTime()) {
+    const d = new Date(`${calendarISO}T00:00:00`);
+    d.setDate(d.getDate() + 1);
+    return toISODate(d);
+  }
+  return calendarISO;
 }
 
 /** How many days have elapsed since the contest start (1-based, capped at CONTEST_DAYS). */
@@ -47,10 +108,10 @@ export function currentDay(startDate: string): number {
 /** ISO dates for the last 30 selectable days (today first). */
 export function selectableDates(): string[] {
   const out: string[] = [];
-  const base = new Date();
+  const base = new Date(`${todayISO()}T00:00:00`);
   for (let i = 0; i < CONTEST_DAYS; i++) {
     const d = new Date(base);
-    d.setDate(base.getDate() - i);
+    d.setDate(d.getDate() - i);
     out.push(toISODate(d));
   }
   return out;
@@ -148,4 +209,3 @@ export function hijriLabel(iso: string): string {
   const fb = hijriFromGregorian(y, m, d);
   return `${fb.day} ${HIJRI_MONTHS_TR[Math.min(Math.max(fb.month, 1), 12) - 1]}`;
 }
-
