@@ -54,21 +54,21 @@ function useRealtimeSync() {
   }, [queryClient]);
 }
 
-/** İlk 3 takım için özel degrade (gradient) ve renk hiyerarşisi barındıran rozet */
+/** İlk üç sıra için ince metal halkalı numara rozeti, diğerleri sade numara */
 function RankBadge({ rank }: { rank: number }) {
   const styles =
     rank === 1
-      ? "bg-gradient-to-br from-amber-300 to-amber-500 text-white border-amber-200/50 shadow-md shadow-amber-500/20"
+      ? "border-gold/70 text-gold"
       : rank === 2
-        ? "bg-gradient-to-br from-slate-300 to-slate-400 text-white border-slate-200/50 shadow-md shadow-slate-500/20"
+        ? "border-silver/70 text-silver"
         : rank === 3
-          ? "bg-gradient-to-br from-orange-300 to-orange-400 text-white border-orange-200/50 shadow-md shadow-orange-500/20"
-          : "border-border bg-background text-muted-foreground shadow-sm";
+          ? "border-bronze/70 text-bronze"
+          : "border-border text-muted-foreground";
 
   return (
     <span
       aria-hidden
-      className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border text-sm font-extrabold tabular-nums transition-all ${styles}`}
+      className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border text-sm font-semibold tabular-nums ${styles}`}
     >
       {rank}
     </span>
@@ -87,27 +87,29 @@ function Leaderboard() {
   const max = Math.max(...active.map((t) => t.total_score), 1);
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-background pb-10">
-      {/* 1. Doku ve Derinlik: Yeni Degrade Arka Plan */}
-      <header className="bg-gradient-to-br from-emerald-700 via-emerald-800 to-green-900 px-4 pb-12 pt-6 text-primary-foreground sm:px-5 sm:pb-16 sm:pt-8 shadow-inner">
-        <div className="mx-auto max-w-2xl">
-          <h1 className="text-2xl font-extrabold leading-tight tracking-tight sm:text-4xl text-white drop-shadow-md">
+    <main className="min-h-screen overflow-x-hidden bg-background">
+      <header className="bg-hero-gradient px-5 pb-12 pt-10 text-hero-foreground sm:pb-16 sm:pt-14">
+        <div className="mx-auto max-w-xl">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-gold/80">
+            30 Günlük Namaz Yarışması
+          </p>
+          <h1 className="mt-3 font-display text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">
             Sağduyulular Camide
           </h1>
+          <div className="mt-5 h-px w-16 bg-gold/70" />
 
-          {/* 2. Cam Efekti (Glassmorphism): Sayaç Kutusu */}
-          <div className="mt-5 rounded-2xl border border-white/20 bg-white/10 p-4 backdrop-blur-md shadow-xl sm:mt-7 sm:p-5">
-            <div className="flex items-center justify-between gap-3 text-sm text-white/90">
-              <span className="min-w-0 truncate font-semibold">
-                {day}. Gün <span className="opacity-70 font-normal">/ {CONTEST_DAYS}</span>
+          <div className="mt-8">
+            <div className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="min-w-0 truncate font-semibold tabular-nums">
+                {day}. Gün <span className="font-normal opacity-60">/ {CONTEST_DAYS}</span>
               </span>
-              <span className="shrink-0 text-xs font-medium tracking-wide">
+              <span className="shrink-0 text-xs font-medium tabular-nums opacity-70">
                 %{pct} · {remaining} gün kaldı
               </span>
             </div>
-            <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-black/20 shadow-inner">
+            <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-hero-foreground/15">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-amber-300 to-amber-500 transition-all duration-1000 ease-out"
+                className="h-full rounded-full bg-gold transition-all duration-1000 ease-out"
                 style={{ width: `${pct}%` }}
               />
             </div>
@@ -115,92 +117,82 @@ function Leaderboard() {
         </div>
       </header>
 
-      <section className="mx-auto -mt-8 max-w-2xl px-3 sm:px-4 relative z-10">
-        {/* Derin Gölge (Shadow-2xl) */}
-        <div className="rounded-3xl border border-border bg-card p-4 shadow-2xl shadow-emerald-900/10 sm:p-6 sm:px-8">
-          <h2 className="mb-5 flex items-center gap-2.5 text-lg font-bold text-foreground">
-            <Trophy className="h-6 w-6 shrink-0 text-amber-500 drop-shadow-sm" aria-hidden />
+      <section className="mx-auto max-w-xl px-5 pb-4 pt-10">
+        <div className="flex items-center gap-2.5">
+          <Trophy className="h-4.5 w-4.5 shrink-0 text-gold" aria-hidden />
+          <h2 className="font-display text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Liderlik Tablosu
           </h2>
-
-          {active.length === 0 ? (
-            <p className="py-10 text-center text-sm font-medium text-muted-foreground">
-              Henüz aktif takım yok.
-            </p>
-          ) : (
-            <ol className="space-y-3">
-              {active.map((team, i) => {
-                // 3. Kürsü Hiyerarşisi: Arka plan ve çerçeve renkleri
-                const cardStyles =
-                  i === 0
-                    ? "border-amber-500/30 bg-amber-500/10"
-                    : i === 1
-                      ? "border-slate-500/30 bg-slate-500/10"
-                      : i === 2
-                        ? "border-orange-500/30 bg-orange-500/10"
-                        : "border-border bg-secondary/30";
-
-                // 4. İlerleme Çubukları: Takım derecesine göre bar renkleri
-                const barStyles =
-                  i === 0
-                    ? "bg-gradient-to-r from-amber-400 to-amber-500"
-                    : i === 1
-                      ? "bg-gradient-to-r from-slate-400 to-slate-500"
-                      : i === 2
-                        ? "bg-gradient-to-r from-orange-400 to-orange-500"
-                        : "bg-gradient-to-r from-emerald-400 to-teal-500";
-
-                return (
-                  <li
-                    key={team.id}
-                    className={`rounded-2xl border px-3.5 py-3 transition-colors ${cardStyles}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <RankBadge rank={i + 1} />
-                      <span className="min-w-0 flex-1 truncate text-base font-bold text-foreground sm:text-lg">
-                        {team.name}
-                        {i === 0 && <span className="ml-1.5 inline-block text-lg" aria-hidden>🥇</span>}
-                        {i === 1 && <span className="ml-1.5 inline-block text-lg" aria-hidden>🥈</span>}
-                        {i === 2 && <span className="ml-1.5 inline-block text-lg" aria-hidden>🥉</span>}
-                      </span>
-                      <span className="shrink-0 text-lg font-extrabold tabular-nums text-foreground tracking-tight sm:text-xl">
-                        {team.total_score}
-                      </span>
-                    </div>
-                    {/* Daha kalın ve tam yuvarlak bar */}
-                    <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-background/50 shadow-inner">
-                      <div
-                        className={`h-full rounded-full transition-all duration-1000 ease-out ${barStyles}`}
-                        style={{
-                          width: `${Math.max((team.total_score / max) * 100, 3)}%`,
-                        }}
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-          )}
         </div>
 
-        {/* 4. Buton Hover/Active Efektleri */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3 pb-safe">
-          <Link
-            to="/kaptan"
-            className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-full border border-border bg-card px-6 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 active:bg-secondary"
-          >
-            <KeyRound className="h-4.5 w-4.5 shrink-0 text-emerald-600" aria-hidden />
-            Kaptan Girişi
-          </Link>
-          <Link
-            to="/admin"
-            className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-full border border-border bg-card px-6 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 active:bg-secondary"
-          >
-            <ShieldCheck className="h-4.5 w-4.5 shrink-0 text-slate-500" aria-hidden />
-            Yönetici Girişi
-          </Link>
-        </div>
+        {active.length === 0 ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">Henüz aktif takım yok.</p>
+        ) : (
+          <ol className="mt-5 divide-y divide-border">
+            {active.map((team, i) => {
+              const barColor =
+                i === 0
+                  ? "bg-gold"
+                  : i === 1
+                    ? "bg-silver"
+                    : i === 2
+                      ? "bg-bronze"
+                      : "bg-primary/50";
+
+              return (
+                <li
+                  key={team.id}
+                  className={`animate-rise ${i === 0 ? "py-5" : "py-4"}`}
+                  style={{ animationDelay: `${i * 60}ms` }}
+                >
+                  <div className="flex items-center gap-3.5">
+                    <RankBadge rank={i + 1} />
+                    <span
+                      className={`min-w-0 flex-1 truncate font-display font-semibold tracking-tight text-foreground ${
+                        i === 0 ? "text-xl" : "text-base"
+                      }`}
+                    >
+                      {team.name}
+                    </span>
+                    <span
+                      className={`shrink-0 font-display font-extrabold tabular-nums tracking-tight text-foreground ${
+                        i === 0 ? "text-2xl" : "text-lg"
+                      }`}
+                    >
+                      {team.total_score}
+                    </span>
+                  </div>
+                  <div className="mt-3 ml-12.5 h-1 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full rounded-full transition-all duration-1000 ease-out ${barColor}`}
+                      style={{ width: `${Math.max((team.total_score / max) * 100, 2)}%` }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
       </section>
+
+      <nav className="mx-auto flex max-w-xl items-center justify-center gap-6 px-5 pb-10 pt-6 pb-safe">
+        <Link
+          to="/kaptan"
+          className="inline-flex min-h-11 items-center gap-2 text-xs font-medium tracking-wide text-muted-foreground transition-colors hover:text-foreground active:text-foreground"
+        >
+          <KeyRound className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          Kaptan Girişi
+        </Link>
+        <span className="h-4 w-px bg-border" aria-hidden />
+        <Link
+          to="/admin"
+          className="inline-flex min-h-11 items-center gap-2 text-xs font-medium tracking-wide text-muted-foreground transition-colors hover:text-foreground active:text-foreground"
+        >
+          <ShieldCheck className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          Yönetici Girişi
+        </Link>
+      </nav>
     </main>
   );
 }
+
