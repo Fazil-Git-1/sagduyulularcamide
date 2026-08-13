@@ -1,41 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-
-const pinSchema = z.object({
-  role: z.enum(["captain", "admin"]),
-  pin: z.string().regex(/^\d{4}$/),
-});
-
-const scoreSchema = z.object({
-  pin: z.string().regex(/^\d{4}$/),
-  team_id: z.string().uuid(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  fajr_count: z.number().int().min(0).max(10000),
-  isha_count: z.number().int().min(0).max(10000),
-  ishraq_count: z.number().int().min(0).max(10000),
-});
-
-const renameSchema = z.object({
-  pin: z.string().regex(/^\d{4}$/),
-  id: z.string().uuid(),
-  name: z.string().trim().min(1).max(60),
-});
-
-const toggleSchema = z.object({
-  pin: z.string().regex(/^\d{4}$/),
-  id: z.string().uuid(),
-  is_active: z.boolean(),
-});
-
-const addTeamSchema = z.object({
-  pin: z.string().regex(/^\d{4}$/),
-  name: z.string().trim().min(1).max(60),
-});
-
-const resetSchema = z.object({
-  pin: z.string().regex(/^\d{4}$/),
-  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-});
+import {
+  pinSchema,
+  scoreSchema,
+  renameSchema,
+  toggleSchema,
+  addTeamSchema,
+  resetSchema,
+} from "./contest.schemas";
 
 export const verifyPin = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => pinSchema.parse(d))
