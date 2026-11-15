@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { teamsQuery, settingsQuery } from "@/lib/queries";
-import { CONTEST_DAYS, currentDay } from "@/lib/contest";
+import { CONTEST_DAYS, currentDay, hijriLabel, todayISO } from "@/lib/contest";
 import { KeyRound, ShieldCheck, Trophy } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -102,6 +102,7 @@ function Leaderboard() {
             <div className="flex items-baseline justify-between gap-3 text-sm">
               <span className="min-w-0 truncate font-semibold tabular-nums">
                 {day}. Gün <span className="font-normal opacity-60">/ {CONTEST_DAYS}</span>
+                <span className="font-normal text-gold/90"> · {hijriLabel(todayISO())}</span>
               </span>
               <span className="shrink-0 text-xs font-medium tabular-nums opacity-70">
                 %{pct} · {remaining} gün kaldı
