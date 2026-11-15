@@ -14,6 +14,7 @@ import {
   hijriLabel,
   prevISO,
   selectableDates,
+  cycleInfo,
   todayISO,
   type PrayerCounts,
   type PrayerKey,
@@ -167,7 +168,10 @@ function ScoreForm({
   // Yarışmanın gerçek başlangıç tarihi (admin panelinden sıfırlanabilir).
   const { data: settings } = useSuspenseQuery(settingsQuery);
 
-  const dates = [...selectableDates()].filter((d) => d >= settings.start_date).reverse();
+  const cyc = cycleInfo(settings.start_date);
+  const dates = [...selectableDates(settings.start_date)].reverse();
+  const dayNo = (d: string) => cycleInfo(settings.start_date, d).day;
+  const isPrev = (d: string) => d < cyc.cycleStart;
 
   const dateRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -178,7 +182,7 @@ function ScoreForm({
   const { data: entries = [] } = useQuery(teamScoresQuery(selectedTeam));
   const entered = new Map(entries.map((e) => [e.date, e.score]));
   const total = computeScore(counts);
-  const dayIndex = dates.indexOf(date) + 1;
+  const dayIndex = dayNo(date);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => {
@@ -246,7 +250,7 @@ function ScoreForm({
       {/* Gün şeridi */}
       <div className="sticky top-[4.25rem] z-10 border-b border-border bg-card/95 px-3 py-2 backdrop-blur sm:px-4">
         <div className="[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex gap-2 overflow-x-auto pb-1">
-          {dates.map((d, i) => {
+          {dates.map((d) => {
             const isSel = d === date;
             const isToday = d === todayISO();
             const has = entered.has(d);
@@ -259,14 +263,14 @@ function ScoreForm({
                 type="button"
                 onClick={() => setDate(d)}
                 aria-pressed={isSel}
-                aria-label={`${i + 1}. Gün — ${formatTR(d)}${has ? ", puan girildi" : ""}`}
+                aria-label={`${isPrev(d) ? "Önceki ay " : ""}${dayNo(d)}. Gün — ${formatTR(d)}${has ? ", puan girildi" : ""}`}
                 className={`flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3.5 text-sm font-bold transition-colors ${
                   isSel
                     ? "border-primary bg-primary text-primary-foreground shadow-soft"
                     : "border-border bg-card text-muted-foreground active:bg-secondary/60"
                 }`}
               >
-                <span className="tabular-nums">{i + 1}. Gün</span>
+                <span className="tabular-nums">{isPrev(d) && <span className="mr-1 text-[10px] font-extrabold opacity-70">ÖNCEKİ AY</span>}{dayNo(d)}. Gün</span>
                 {isToday && (
                   <span
                     className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold tracking-wide ${
@@ -293,7 +297,7 @@ function ScoreForm({
         {/* Hicri gün başlığı */}
         <div className="text-center">
           <h2 className="text-2xl font-black tracking-tight text-foreground">
-            {dayIndex}. Gün Puanları
+            {isPrev(date) ? "Önceki Ay · " : ""}{dayIndex}. Gün Puanları
           </h2>
           <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1 text-sm font-bold text-primary">
             <CalendarDays className="h-4 w-4" aria-hidden />

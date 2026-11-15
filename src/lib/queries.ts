@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { cycleInfo, todayISO } from "@/lib/contest";
 
 export type Team = {
   id: string;
@@ -12,9 +13,15 @@ export type Team = {
 export const teamsQuery = queryOptions({
   queryKey: ["teams"],
   queryFn: async (): Promise<Team[]> => {
+    const { data: st } = await supabase
+      .from("contest_settings")
+      .select("start_date")
+      .eq("id", 1)
+      .maybeSingle();
+    const { cycleStart } = cycleInfo(st?.start_date ?? todayISO());
     const [teamsRes, scoresRes] = await Promise.all([
       supabase.from("teams").select("id, name, is_active, total_score, created_at"),
-      supabase.from("scores").select("team_id, score"),
+      supabase.from("scores").select("team_id, score").gte("date", cycleStart),
     ]);
     if (teamsRes.error) throw teamsRes.error;
     if (scoresRes.error) throw scoresRes.error;

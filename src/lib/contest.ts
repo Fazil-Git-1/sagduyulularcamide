@@ -97,23 +97,48 @@ export function todayISO(): string {
   return calendarISO;
 }
 
-/** How many days have elapsed since the contest start (1-based, capped at CONTEST_DAYS). */
-export function currentDay(startDate: string): number {
-  const start = new Date(`${startDate}T00:00:00`);
-  const now = new Date(`${todayISO()}T00:00:00`);
-  const diff = Math.floor((now.getTime() - start.getTime()) / 86400000) + 1;
-  return Math.min(Math.max(diff, 0), CONTEST_DAYS);
+/** Gün farkı (b - a), ISO tarihler arasında. */
+function daysBetween(a: string, b: string): number {
+  return Math.round((Date.UTC(...ymd(b)) - Date.UTC(...ymd(a))) / 86400000);
+}
+function ymd(iso: string): [number, number, number] {
+  const [y = 0, m = 1, d = 1] = iso.split("-").map(Number);
+  return [y, m - 1, d];
+}
+export function addDaysISO(iso: string, n: number): string {
+  const [y, m, d] = ymd(iso);
+  return new Date(Date.UTC(y, m, d + n)).toISOString().slice(0, 10);
 }
 
-/** ISO dates for the last 30 selectable days (today first). */
-export function selectableDates(): string[] {
+/** Önceki ayın eksik puanları yeni ayın ilk kaç gününe kadar girilebilir. */
+export const GRACE_DAYS = 5;
+
+/** 30 günlük döngü bilgisi: 30. günden sonra otomatik olarak sonraki ayın 1. gününe geçer. */
+export function cycleInfo(startDate: string, today: string = todayISO()) {
+  const diff = Math.max(daysBetween(startDate, today), 0);
+  const cycle = Math.floor(diff / CONTEST_DAYS) + 1;
+  const day = (diff % CONTEST_DAYS) + 1;
+  const cycleStart = addDaysISO(startDate, (cycle - 1) * CONTEST_DAYS);
+  const prevStart = cycle > 1 && day <= GRACE_DAYS ? addDaysISO(cycleStart, -CONTEST_DAYS) : null;
+  return { cycle, day, cycleStart, prevStart };
+}
+
+/** Kaptanın puan girebileceği en eski tarih. */
+export function earliestEditable(startDate: string, today: string = todayISO()): string {
+  const c = cycleInfo(startDate, today);
+  return c.prevStart ?? c.cycleStart;
+}
+
+export function currentDay(startDate: string): number {
+  return cycleInfo(startDate).day;
+}
+
+/** Girilebilir tarihler (bugün önce). */
+export function selectableDates(startDate?: string): string[] {
+  const today = todayISO();
+  const from = startDate ? earliestEditable(startDate, today) : addDaysISO(today, -(CONTEST_DAYS - 1));
   const out: string[] = [];
-  const base = new Date(`${todayISO()}T00:00:00`);
-  for (let i = 0; i < CONTEST_DAYS; i++) {
-    const d = new Date(base);
-    d.setDate(d.getDate() - i);
-    out.push(toISODate(d));
-  }
+  for (let d = today; d >= from; d = addDaysISO(d, -1)) out.push(d);
   return out;
 }
 
@@ -184,7 +209,7 @@ function hijriFromGregorian(y: number, m: number, d: number): { day: number; mon
 // gerçek ay gözlemine dayalı resmi takvim arasındaki bilinen fark). Bu durumda,
 // gerçek/duyurulan takvimle eşleşmesi için burada düzeltme yapılır. İleride
 // tekrar sapma olursa (örn. yeni bir ayın girişinde), bu sayıyı güncelleyin.
-const HIJRI_DAY_OFFSET = 0;
+const HIJRI_DAY_OFFSET = 1;
 
 /** Hicri tarih etiketi, ör. "5 Rebiülevvel". Mobil ICU eksikliklerine karşı dayanıklı. */
 export function hijriLabel(iso: string): string {

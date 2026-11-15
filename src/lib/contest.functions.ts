@@ -20,8 +20,17 @@ export const saveScore = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { assertPin } = await import("./pins.server");
     assertPin("captain", data.pin);
-    const { PRAYERS } = await import("./contest");
+    const { PRAYERS, earliestEditable, todayISO } = await import("./contest");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: st } = await supabaseAdmin
+      .from("contest_settings")
+      .select("start_date")
+      .eq("id", 1)
+      .maybeSingle();
+    const today = todayISO();
+    if (data.date > today || (st && data.date < earliestEditable(st.start_date, today))) {
+      throw new Error("Bu tarih için puan girişi süresi doldu.");
+    }
     const counts = {
       fajr_count: data.fajr_count,
       isha_count: data.isha_count,
