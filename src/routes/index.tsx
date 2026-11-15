@@ -1,4 +1,4 @@
-import { createFileRoute, Link, lazyRouteComponent } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -28,9 +28,10 @@ export const Route = createFileRoute("/")({
     context.queryClient.ensureQueryData(settingsQuery);
   },
   component: Leaderboard,
-  errorComponent: lazyRouteComponent(
-    () => import("@/components/route-error"),
-    "TabloError",
+  errorComponent: ({ error }) => (
+    <div className="p-8 text-center text-sm text-muted-foreground" role="alert">
+      Tablo yüklenemedi: {error.message}
+    </div>
   ),
   notFoundComponent: () => <div className="p-8 text-center">Bulunamadı.</div>,
 });

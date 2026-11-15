@@ -1,4 +1,4 @@
-import { createFileRoute, Link, lazyRouteComponent } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,9 +47,10 @@ export const Route = createFileRoute("/kaptan")({
     ],
   }),
   component: CaptainPage,
-  errorComponent: lazyRouteComponent(
-    () => import("@/components/route-error"),
-    "SayfaError",
+  errorComponent: ({ error }) => (
+    <div className="p-8 text-center text-sm text-muted-foreground" role="alert">
+      Sayfa yüklenemedi: {error.message}
+    </div>
   ),
   notFoundComponent: () => <div className="p-8 text-center">Bulunamadı.</div>,
 });
