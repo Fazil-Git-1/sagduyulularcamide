@@ -30,7 +30,7 @@ export const Route = createFileRoute("/")({
   component: Leaderboard,
   errorComponent: ({ error }) => (
     <div className="p-8 text-center text-sm text-muted-foreground" role="alert">
-      Tablo yüklenemedi: {error.message}
+      Tablo yüklenemedi: {(error as Error).message}
     </div>
   ),
   notFoundComponent: () => <div className="p-8 text-center">Bulunamadı.</div>,

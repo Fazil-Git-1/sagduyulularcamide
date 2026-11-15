@@ -50,7 +50,7 @@ export const Route = createFileRoute("/kaptan")({
   component: CaptainPage,
   errorComponent: ({ error }) => (
     <div className="p-8 text-center text-sm text-muted-foreground" role="alert">
-      Sayfa yüklenemedi: {error.message}
+      Sayfa yüklenemedi: {(error as Error).message}
     </div>
   ),
   notFoundComponent: () => <div className="p-8 text-center">Bulunamadı.</div>,

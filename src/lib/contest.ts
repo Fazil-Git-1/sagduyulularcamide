@@ -46,7 +46,7 @@ const toDeg = (v: number) => (v * 180) / Math.PI;
 
 /** Verilen Gregorian takvim gününde Iğdır için güneşin battığı an (UTC Date). */
 function igdirSunsetUTC(isoDate: string): Date {
-  const [y, m, d] = isoDate.split("-").map(Number);
+  const [y = 0, m = 1, d = 1] = isoDate.split("-").map(Number);
   // O günün öğlenini referans alarak Julian tarihini hesapla.
   const noonUTC = Date.UTC(y, m - 1, d, 12, 0, 0);
   const jd = noonUTC / 86400000 + 2440587.5;
